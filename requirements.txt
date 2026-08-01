@@ -1,0 +1,15 @@
+# Núcleo (parsing FIT/TCX + manipulación de datos)
+fitdecode
+pandas
+pyarrow
+pyyaml
+python-dotenv
+duckdb
+
+# Dashboard
+streamlit
+plotly
+
+# --- Fase 2 / desarrollo ---
+# garminconnect     # descarga automática desde Garmin Connect (API no oficial)
+# pytest            # tests

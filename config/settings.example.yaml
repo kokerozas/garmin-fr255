@@ -1,0 +1,21 @@
+# Copiar a config/settings.yaml y ajustar. El archivo real no se versiona
+# porque contiene parámetros personales (FC, umbrales, zonas).
+
+paths:
+  raw_fit: data/raw/fit
+  raw_tcx: data/raw/tcx
+  interim: data/interim
+  processed: data/processed
+  database: data/db/garmin.duckdb
+
+atleta:
+  nombre: ""
+  fc_maxima: null          # ppm — se estimará desde datos (D-007)
+  fc_reposo: null          # ppm
+  umbral_ritmo: null       # min/km, ej. "4:30"
+  zonas_fc: []             # estimadas periódicamente desde los datos (D-007)
+
+ingesta:
+  modo: manual             # manual (fase 1) | api (fase 2, D-004)
+  frecuencia: semanal
+  extensiones: [".fit", ".tcx"]

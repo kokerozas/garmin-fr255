@@ -1,0 +1,30 @@
+# --- Datos personales y de salud: NUNCA al repositorio ---
+data/**
+!data/**/
+!data/**/.gitkeep
+config/settings.yaml
+.env
+
+# --- Logs ---
+logs/*
+!logs/.gitkeep
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Bases de datos (redundante con data/, por seguridad) ---
+*.db
+*.sqlite
+*.duckdb
+
+# --- Sistema / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
