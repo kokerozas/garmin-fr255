@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from garmin.db.export_loader import load_export          # noqa: E402
 from garmin.db.loader import load_directory              # noqa: E402
 from garmin.db.monitoring_loader import load_monitoring  # noqa: E402
 from garmin.db.schema import connect                     # noqa: E402
@@ -39,6 +40,15 @@ def main() -> None:
         for k, v in mon.items()
     )
     print(f"Monitoreo     : {resumen}")
+
+    exp = load_export(db, ROOT / "data/raw/export")
+    if exp:
+        acts = exp.get("actividades") or {}
+        print(
+            f"Export Garmin : {exp.get('dias_rellenados', 0)} días rellenados"
+            + (f" · actividades históricas: +{acts.get('insertadas', 0)} "
+               f"({acts.get('duplicadas_omitidas', 0)} ya existían)" if acts else "")
+        )
 
     met = refresh_all(db)
     con = connect(db)

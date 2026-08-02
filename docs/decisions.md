@@ -62,3 +62,13 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
 - **Componentes:** ingesta de `raw/monitoring/` → `daily_metrics` (61 días reales: FC continua/mínima 37 días, sueño con puntaje y etapas 50 noches, HRV nocturno 10 días con banda personal); reconstrucción estándar de `timestamp_16`; cada noche se asigna al día en que se despierta; upsert por fecha (varios archivos aportan columnas del mismo día). Tabla `activity_zones`: tiempo en Z1-Z5 (%FCmax de D-007) para 188 actividades. Dashboard: nueva vista **Recuperación** (sueño por etapas, HRV vs banda, FC mínima, estrés) y tiempo-en-zona en Detalle.
 - **Excluido:** archivos `Metrics/` (VO2max de Garmin) usan mensajes fuera del perfil FIT público de fitdecode → pospuesto; alternativa natural: obtenerlo vía API en la fase 2 (D-004).
 - **Verificación:** pytest 9/9 · pipeline completo idempotente sobre datos reales · capturas del dashboard revisadas.
+
+## D-013 — Backfill histórico desde el export de cuenta Garmin
+- **Estado:** aceptada (2026-08-02)
+- **Fuente:** `data/raw/export/solicitud_datos.zip` (export oficial "Exportar tus datos", 34.7 MB). Se lee DIRECTO del ZIP sin descomprimir: el ZIP es el raw inmutable. Jorge lo había dejado en la raíz del repo → se movió bajo `data/` de inmediato (git no debe ver datos de salud).
+- **Backfill:** 1.327 días rellenados en `daily_metrics` (2023-10-25 → 2026-07-21): FC reposo oficial (843 días), sueño con etapas y puntaje (571 noches desde jul-2023), estrés, pasos, Body Battery, VO2max (46 mediciones, rango 45-50). Política de fusión: el export RELLENA nulos, nunca pisa lo que ya midió el reloj. Nueva tabla `race_predictions` (2.956 predicciones 5K/10K/21K/42K).
+- **Actividades históricas:** +50 insertadas desde `summarizedActivities.json` (2023-10-25 → 2024-05, era pre-retención del reloj), con dedupe por hora de inicio ±120 s (las 193 del reloj se detectaron y omitieron). Sin series 1s → TRIMP por método `session_avg`. Serie `daily_load` extendida a **1.013 días** (2023-10-25 → hoy).
+- **Esquema:** migraciones aditivas idempotentes (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`) para `resting_hr`, `vo2max`, `body_battery_max/min`.
+- **Dashboard:** Recuperación con selector de rango (90d/6m/1a/Todo), FC en reposo real (COALESCE oficial→proxy), gráfico VO2max.
+- **Backlog:** FITs originales antiguos de `Uploaded-Files` (darían series 1s a las 50 históricas), Body Battery y predicciones de carrera como gráficos, `MetricsAcuteTrainingLoad` de Garmin como referencia comparativa vs nuestro ATL.
+- **Verificación:** pytest 12/12 · dedupe verificado (0 duplicados) · cobertura por año validada · capturas revisadas.

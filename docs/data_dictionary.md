@@ -10,7 +10,8 @@ Mapa entre los mensajes FIT del Forerunner 255 y las tablas DuckDB (implementado
 | `GARMIN/Monitor/` | `data/raw/monitoring/monitor/` | Monitoreo diario: pasos, FC continua, estrés, Body Battery |
 | `GARMIN/Sleep/` | `data/raw/monitoring/sleep/` | Sueño |
 | `GARMIN/HRVStatus/` | `data/raw/monitoring/hrv/` | Estado HRV nocturno |
-| `GARMIN/Metrics/` | `data/raw/monitoring/metrics/` | VO2max y métricas fisiológicas de Garmin |
+| `GARMIN/Metrics/` | `data/raw/monitoring/metrics/` | (no parseable; el VO2max llega por el export, D-013) |
+| Export de cuenta (ZIP) | `data/raw/export/` | Historial completo de bienestar + resúmenes de actividades de toda la cuenta |
 
 ## Tablas (data/db/garmin.duckdb)
 
@@ -20,9 +21,10 @@ Mapa entre los mensajes FIT del Forerunner 255 y las tablas DuckDB (implementado
 | `samples` | mensajes `record` | Serie ~1 s: FC (+`hr_valid`/`hr_flag` D-008), velocidad, cadencia, altitud, GPS, dinámica de carrera |
 | `laps` | mensajes `lap` | Parciales |
 | `daily_load` | derivada | Serie diaria: TRIMP, ATL, CTL, TSB, ACWR, semáforo `risk` |
-| `daily_metrics` | `raw/monitoring/*` | Por día: FC mínima (proxy reposo), pasos, estrés, sueño (puntaje + etapas), HRV nocturno con banda personal (D-012) |
+| `daily_metrics` | `raw/monitoring/*` + `raw/export/*.zip` | Por día: FC reposo oficial + mínima proxy, pasos, estrés, Body Battery, sueño (puntaje + etapas), HRV nocturno, VO2max (D-012, D-013) |
 | `activity_zones` | derivada de `samples` | Tiempo en zonas Z1-Z5 (%FCmax estimada) por actividad (D-012) |
 | `params` | derivada | FCmax/FCrep vigentes y su fuente (settings o estimado) |
+| `race_predictions` | `raw/export/*.zip` | Predicción diaria de tiempos 5K/10K/21K/42K (D-013) |
 | `ingest_log` | pipeline | Auditoría por archivo: ok / error / detalle (idempotencia) |
 
 ## Convenciones

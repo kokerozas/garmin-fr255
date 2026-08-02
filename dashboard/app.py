@@ -106,7 +106,18 @@ if page == "Semana y carga":
 elif page == "Recuperación":
     st.title("Recuperación")
 
-    dm = q("SELECT * FROM daily_metrics ORDER BY date_local", (), M)
+    rango_r = st.radio(
+        "Rango", ["90 días", "6 meses", "1 año", "Todo"],
+        horizontal=True, index=1, label_visibility="collapsed", key="rango_rec",
+    )
+    dias_r = {"90 días": 90, "6 meses": 183, "1 año": 365, "Todo": 10000}[rango_r]
+
+    dm = q(
+        """SELECT *, COALESCE(resting_hr, hr_min) AS fc_reposo FROM daily_metrics
+           WHERE date_local >= (SELECT MAX(date_local) FROM daily_metrics) - INTERVAL (?) DAY
+           ORDER BY date_local""",
+        (dias_r,), M,
+    )
     if dm.empty:
         st.info("Sin datos de monitoreo. Copia los archivos de Monitor/Sleep/HRVStatus "
                 "del reloj a data/raw/monitoring/ y corre scripts/ingest.py.")
@@ -115,8 +126,10 @@ elif page == "Recuperación":
     last = dm.iloc[-1]
     with_sleep = dm.dropna(subset=["sleep_score"])
     with_hrv = dm.dropna(subset=["hrv_last_night"])
+    with_rhr = dm.dropna(subset=["fc_reposo"])
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("FC mínima (últ. día)", f"{last.hr_min:.0f} ppm" if pd.notna(last.hr_min) else "—")
+    c1.metric("FC en reposo (últ.)",
+              f"{with_rhr.iloc[-1].fc_reposo:.0f} ppm" if not with_rhr.empty else "—")
     if not with_sleep.empty:
         s = with_sleep.iloc[-1]
         c2.metric("Último sueño", f"{s.sleep_h:.1f} h · {s.sleep_score:.0f} pts")
@@ -127,9 +140,10 @@ elif page == "Recuperación":
         c3.metric("HRV última noche", f"{h.hrv_last_night:.0f} ms")
         c4.metric("Estado HRV", HRV_ES.get(str(h.hrv_status), str(h.hrv_status)))
     st.caption(
-        "La FC mínima diaria es un proxy de tu FC en reposo (baja = buena recuperación). "
-        "El HRV se compara contra la banda 'equilibrada' que Garmin calibra para ti: "
-        "caer bajo la banda tras cargas altas es señal de recuperación incompleta."
+        "FC en reposo: valor oficial de Garmin (backfill D-013) o mínima diaria del reloj "
+        "como respaldo — baja = buena recuperación. El HRV se compara contra la banda "
+        "'equilibrada' que Garmin calibra para ti: caer bajo la banda tras cargas altas "
+        "es señal de recuperación incompleta."
     )
 
     # Eje de tiempo COMPARTIDO por los 4 paneles: donde un panel se ve vacío es
@@ -143,7 +157,7 @@ elif page == "Recuperación":
     cc1, cc2 = st.columns(2)
     with cc1:
         st.plotly_chart(
-            viz.fig_daily_line(dm, "hr_min", "FC mínima diaria", "ppm", x_range=rng),
+            viz.fig_daily_line(dm, "fc_reposo", "FC en reposo", "ppm", x_range=rng),
             width="stretch",
         )
     with cc2:
@@ -152,11 +166,16 @@ elif page == "Recuperación":
                                slot=1, x_range=rng),
             width="stretch",
         )
+    st.plotly_chart(
+        viz.fig_daily_line(dm, "vo2max", "VO2max (medición Garmin)", "ml/kg/min",
+                           slot=2, x_range=rng, fmt=".1f"),
+        width="stretch",
+    )
     st.caption(
-        "Cobertura real del reloj (no del sistema): sueño ~73 noches, monitoreo continuo "
-        "~46 días, HRV ~10 días — por eso los paneles se llenan desde fechas distintas. "
-        "El historial anterior vive en la nube de Garmin: se rellenará con el export de "
-        "cuenta / fase 2. Desde ahora, cada sincronización acumula historia."
+        "Historial completo desde octubre 2023 gracias al export de cuenta (D-013): "
+        "571+ noches de sueño, FC de reposo oficial de Garmin y VO2max. El HRV nocturno "
+        "existe solo desde que el reloj lo registra (~jul 2026) y crecerá con cada "
+        "sincronización. Donde un panel se ve vacío, ese dato no existía."
     )
 
 # ---------------------------------------------------------- Detalle de actividad

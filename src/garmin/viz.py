@@ -214,13 +214,13 @@ def fig_hrv(dm: pd.DataFrame, title="HRV nocturno (RMSSD) vs tu banda personal",
 
 
 def fig_daily_line(dm: pd.DataFrame, col: str, title: str, unit: str, slot: int = 0,
-                   x_range=None) -> go.Figure:
+                   x_range=None, fmt: str = ".0f") -> go.Figure:
     d = dm.dropna(subset=[col])
     fig = go.Figure()
     fig.add_scatter(
         x=d["date_local"], y=d[col], mode="lines+markers",
         line=dict(color=SLOTS[slot], width=2), marker=dict(size=6),
-        hovertemplate="%{y:.0f} " + unit + "<extra></extra>",
+        hovertemplate="%{y:" + fmt + "} " + unit + "<extra></extra>",
     )
     fig.update_yaxes(title_text=unit, title_font=dict(color=MUTED, size=12), rangemode="normal")
     fig.update_layout(showlegend=False)

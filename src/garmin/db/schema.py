@@ -103,6 +103,12 @@ CREATE TABLE IF NOT EXISTS activity_zones (
     seconds     DOUBLE
 );
 
+CREATE TABLE IF NOT EXISTS race_predictions (
+    date_local DATE,
+    race       VARCHAR,   -- 5K | 10K | 21K | 42K
+    seconds    INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS daily_load (
     date_local   DATE PRIMARY KEY,
     trimp        DOUBLE,
@@ -116,7 +122,18 @@ CREATE TABLE IF NOT EXISTS daily_load (
 """
 
 
+# Migraciones aditivas para bases creadas con esquemas anteriores (D-013)
+MIGRATIONS = [
+    "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS resting_hr INTEGER",
+    "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS vo2max DOUBLE",
+    "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS body_battery_max INTEGER",
+    "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS body_battery_min INTEGER",
+]
+
+
 def connect(path) -> duckdb.DuckDBPyConnection:
     con = duckdb.connect(str(path))
     con.execute(DDL)
+    for mig in MIGRATIONS:
+        con.execute(mig)
     return con
