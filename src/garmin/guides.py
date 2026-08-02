@@ -152,6 +152,38 @@ aeróbico constante (zona 2) y baja con inactividad — compárala con tus eras 
 en el panel semanal. Solo se actualiza cuando corres (no en fútbol), por eso hay
 períodos sin puntos.
 """,
+    "puedo_jugar": """
+**¿Puedo jugar hoy? — el semáforo pre-partido**
+
+Síntesis de 3 factores, pensada para leerse en 5 segundos antes de decidir
+cuántos minutos jugar:
+
+- **Carga:** ¿tu ACWR está en banda y sin parones largos? (>10 días sin actividad
+  o ACWR >1.5 = ⛔).
+- **Recuperación:** sueño de anoche, HRV vs tu banda y FC reposo vs tu norma.
+- **Molestias:** lo que TÚ registraste (últimos 7 días). Dolor 7+/10 = ⛔;
+  molestia 4-6 = ⚠️.
+
+**Cómo usarlo:** 🟢 juega normal · 🟡 juega, pero calienta largo, evita el 100% en
+sprints tempranos y considera no jugar completo · 🔴 el partido de hoy te cuesta
+más de lo que te da — modera minutos o descansa. El semáforo aconseja, no decide:
+tu cuerpo tiene la última palabra.
+""",
+    "registro": """
+**Registro subjetivo (RPE + molestias)**
+
+Los sensores miden tu corazón; esto mide lo que solo tú sabes.
+
+- **RPE (0-10):** cuán dura se SINTIÓ la sesión (escala de Foster). Con la duración
+  produce la carga sRPE (RPE × minutos), una segunda vara junto al TRIMP: cuando el
+  sRPE dice "durísimo" y la FC dice "normal", hay fatiga escondida.
+- **Molestias por zona (0-10):** la señal MÁS temprana de lesión que existe.
+  0-3 = ruido normal · 4-6 = relevante (el motor lo vigila) · 7+ = dolor serio
+  (el motor lo trata como alerta).
+
+**El hábito:** 30 segundos después de cada sesión, idealmente el mismo día.
+La constancia vale más que la precisión — reporta lo que sientas, sin pensarlo tanto.
+""",
     # ------------------------------------------------------------------ Detalle
     "fc_actividad": """
 **Frecuencia cardíaca de la sesión**

@@ -103,6 +103,23 @@ CREATE TABLE IF NOT EXISTS activity_zones (
     seconds     DOUBLE
 );
 
+CREATE TABLE IF NOT EXISTS wellness_log (
+    log_id       VARCHAR PRIMARY KEY,   -- 'a:<activity_id>' o 'd:<fecha>' (general)
+    date_local   DATE,
+    activity_id  VARCHAR,               -- NULL si es registro general del día
+    rpe          INTEGER,               -- esfuerzo percibido 0-10 (Foster)
+    duration_min INTEGER,               -- minutos (de la actividad, o manual)
+    d_isquios    INTEGER,               -- molestias 0-10 por zona (fútbol)
+    d_cuadriceps INTEGER,
+    d_gemelos    INTEGER,
+    d_aductores  INTEGER,
+    d_rodilla    INTEGER,
+    d_tobillo    INTEGER,
+    d_espalda    INTEGER,
+    nota         VARCHAR,
+    created_at   TIMESTAMP DEFAULT current_timestamp
+);
+
 CREATE TABLE IF NOT EXISTS race_predictions (
     date_local DATE,
     race       VARCHAR,   -- 5K | 10K | 21K | 42K

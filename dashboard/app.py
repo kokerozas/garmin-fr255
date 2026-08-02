@@ -18,6 +18,7 @@ import streamlit as st  # noqa: E402
 
 from garmin import guides, viz  # noqa: E402
 from garmin.metrics.recommendations import build_recommendations  # noqa: E402
+from garmin.metrics import wellness  # noqa: E402
 from garmin.utils.config import db_path  # noqa: E402
 
 st.set_page_config(page_title="Garmin FR255 — Carga y riesgo", layout="wide")
@@ -43,6 +44,11 @@ def recomendaciones(_mtime: float) -> list[dict]:
     return build_recommendations(DB)
 
 
+@st.cache_data(show_spinner=False)
+def readiness(_mtime: float) -> dict:
+    return wellness.match_readiness(DB)
+
+
 def guia(key: str) -> None:
     """Botón ℹ️ con la explicación técnica e intuitiva del panel (D-014)."""
     with st.popover("ℹ️ ¿Cómo leer este panel?"):
@@ -55,13 +61,28 @@ if not DB.exists():
 
 M = mtime()
 st.sidebar.title("Garmin FR255")
-page = st.sidebar.radio("Vista", ["Semana y carga", "Recuperación", "Detalle de actividad"])
+page = st.sidebar.radio(
+    "Vista",
+    ["Semana y carga", "Recuperación", "Detalle de actividad", "Registrar sesión"],
+)
 st.sidebar.caption("Datos: DuckDB local · métricas propias (D-007). "
                    "La ingesta se corre con scripts/ingest.py.")
 
 # ---------------------------------------------------------------- Semana y carga
 if page == "Semana y carga":
     st.title("Semana y carga de entrenamiento")
+
+    # --- Tarjeta exprés "¿Puedo jugar hoy?" (D-015) ---
+    rd = readiness(M)
+    CAJA = {"ok": st.success, "ojo": st.warning, "alto": st.error}
+    CAJA[rd["estado"]](f"## {rd['titulo']}")
+    fc1, fc2, fc3 = st.columns(3)
+    EMOJI = {"ok": "✅", "ojo": "⚠️", "alto": "⛔"}
+    for col, (nombre, f) in zip((fc1, fc2, fc3), rd["factores"].items()):
+        col.markdown(f"{EMOJI[f['estado']]} **{nombre}**")
+        col.caption(f["razon"])
+    guia("puedo_jugar")
+    st.divider()
 
     rango = st.radio(
         "Rango", ["90 días", "180 días", "1 año", "Todo"],
@@ -212,6 +233,67 @@ elif page == "Recuperación":
         "existe solo desde que el reloj lo registra (~jul 2026) y crecerá con cada "
         "sincronización. Donde un panel se ve vacío, ese dato no existía."
     )
+
+# ------------------------------------------------------------- Registrar sesión
+elif page == "Registrar sesión":
+    st.title("Registrar sesión (30 segundos)")
+    st.caption(
+        "Lo que el reloj no ve: cómo se sintió y dónde molesta. "
+        "Esto alimenta las recomendaciones y la tarjeta '¿Puedo jugar hoy?'."
+    )
+    guia("registro")
+
+    acts14 = q(
+        """SELECT activity_id, CAST(date_local AS VARCHAR) AS f, sport,
+                  ROUND(duration_s/60) AS mins
+           FROM activities
+           WHERE date_local >= current_date - INTERVAL 21 DAY
+           ORDER BY start_time_utc DESC""", (), M,
+    )
+    opciones = ["— Registro general del día (sin sesión) —"] + [
+        f"{r.f} · {viz.sport_display(r.sport)} · {r.mins:.0f} min"
+        for r in acts14.itertuples()
+    ]
+    sel = st.selectbox("¿Qué registras?", opciones)
+    idx = opciones.index(sel) - 1
+    act_id = acts14.iloc[idx]["activity_id"] if idx >= 0 else None
+    dur_def = int(acts14.iloc[idx]["mins"]) if idx >= 0 else 0
+    fecha = (pd.Timestamp(acts14.iloc[idx]["f"]).date() if idx >= 0
+             else pd.Timestamp.today().date())
+
+    rpe = st.slider("Esfuerzo percibido (RPE)", 0, 10, 5)
+    st.caption(wellness.RPE_ESCALA)
+    dur = st.number_input("Duración (min)", 0, 600, dur_def,
+                          help="Se toma de la actividad; edítala solo si registras sin reloj.")
+
+    st.markdown("**Molestias por zona** (0 = nada · 4+ = relevante · 7+ = dolor serio)")
+    dolores = {}
+    zonas = list(wellness.ZONAS.items())
+    for fila in (zonas[:4], zonas[4:]):
+        cols = st.columns(len(fila))
+        for c, (key, nombre) in zip(cols, fila):
+            dolores[key] = c.slider(nombre, 0, 10, 0, key=f"z_{key}")
+
+    nota = st.text_input("Nota (opcional)", placeholder="ej. cancha sintética, molestia al rematar…")
+
+    if st.button("💾 Guardar registro", type="primary"):
+        wellness.save_log(
+            DB, date_local=fecha, activity_id=act_id, rpe=rpe,
+            duration_min=dur, dolores=dolores, nota=nota,
+        )
+        st.cache_data.clear()
+        st.success(f"Registro guardado para {fecha} — sRPE {rpe * dur} "
+                   f"(las recomendaciones ya lo consideran).")
+
+    st.subheader("Últimos registros")
+    logs = wellness.fetch_logs(DB, 15)
+    if logs.empty:
+        st.info("Aún no hay registros. El primero toma 30 segundos.")
+    else:
+        logs["sport"] = logs["sport"].map(lambda s: viz.sport_display(s) if s else "General")
+        logs = logs.rename(columns={"date_local": "fecha", "sport": "sesión",
+                                    "duration_min": "min"})
+        st.dataframe(logs, width="stretch", hide_index=True)
 
 # ---------------------------------------------------------- Detalle de actividad
 else:

@@ -158,6 +158,37 @@ def build_recommendations(db_path) -> list[dict]:
                 "sueño o infección incubando. Baja la intensidad hasta que vuelva.",
             ))
 
+    # --- 5b. Molestias del registro subjetivo (D-015) --------------------------
+    try:
+        from garmin.metrics.wellness import pain_status
+
+        for d in pain_status(db_path, dias=10):
+            if d["nivel_max"] >= 7:
+                recs.append(_rec(
+                    "alerta",
+                    f"Dolor significativo en {d['zona'].lower()} ({d['nivel_max']}/10)",
+                    "Un 7+ no se juega: reposo relativo de la zona, y si persiste "
+                    "más de 72 h o reaparece al cargar, evaluación profesional.",
+                ))
+            elif d["veces_alto"] >= 2:
+                recs.append(_rec(
+                    "atencion",
+                    f"Molestia recurrente en {d['zona'].lower()} ({d['nivel_max']}/10, "
+                    f"{d['veces_alto']} registros)",
+                    "La repetición es la señal: evita sprints máximos y cambios de "
+                    "dirección bruscos hasta que baje de 3, y refuerza el trabajo "
+                    "excéntrico suave de la zona.",
+                ))
+            elif d["nivel_max"] >= 4 and acwr is not None and not np.isnan(acwr) and acwr >= 1.3:
+                recs.append(_rec(
+                    "atencion",
+                    f"Molestia en {d['zona'].lower()} + carga en escalada (ACWR {acwr:.2f})",
+                    "La combinación molestia + subida de carga es el escenario típico "
+                    "pre-lesión: recorta la próxima dosis.",
+                ))
+    except Exception:
+        pass  # sin registros subjetivos aún: el resto del motor sigue funcionando
+
     # --- 6. Todo en orden ------------------------------------------------------
     if not any(r["nivel"] in ("alerta", "atencion") for r in recs):
         recs.append(_rec(
