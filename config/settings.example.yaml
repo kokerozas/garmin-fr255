@@ -10,8 +10,8 @@ paths:
 
 atleta:
   nombre: ""
-  fc_maxima: null          # ppm — se estimará desde datos (D-007)
-  fc_reposo: null          # ppm
+  fc_maxima: null          # ppm — si es null, se estima desde tus datos (D-007)
+  fc_reposo: null          # ppm — si es null, se estima desde tus datos (D-007)
   umbral_ritmo: null       # min/km, ej. "4:30"
   zonas_fc: []             # estimadas periódicamente desde los datos (D-007)
 

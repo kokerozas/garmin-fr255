@@ -1,15 +1,13 @@
 .PHONY: ingest rebuild dashboard test
 
-# Atajos operativos del proyecto. Se implementaran junto con el pipeline.
+ingest:      ## Procesar archivos nuevos de data/raw/ → DuckDB → métricas
+	python scripts/ingest.py
 
-ingest:      ## Procesar archivos nuevos de data/raw/ hacia la base de datos
-	@echo "Pendiente: scripts/ingest.py"
-
-rebuild:     ## Reconstruir la base de datos completa desde data/raw/
-	@echo "Pendiente: scripts/rebuild_db.py"
+rebuild:     ## Reconstruir la base completa desde data/raw/
+	rm -f data/db/garmin.duckdb && python scripts/ingest.py
 
 dashboard:   ## Levantar el dashboard Streamlit
-	@echo "Pendiente: dashboard/app.py"
+	streamlit run dashboard/app.py
 
 test:        ## Ejecutar tests
-	@echo "Pendiente: pytest"
+	python -m pytest tests/ -q

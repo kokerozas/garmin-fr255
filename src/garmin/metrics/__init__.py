@@ -1,1 +1,1 @@
-"""Subpaquete metrics."""
+"""Subpaquete %s."""
