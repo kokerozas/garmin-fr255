@@ -20,3 +20,13 @@ de datos (DuckDB). Se completa durante el diseño de la ingesta.
 - Timestamps en UTC en la base; zona local (America/Santiago) solo al visualizar.
 - `activity_id` = hash estable del archivo raw de origen (trazabilidad archivo → fila).
 - El deporte (`sport`/`sub_sport`) se conserva siempre: la carga se compara entre deportes vía TRIMP (D-006).
+
+## Fuentes de datos (D-010)
+
+| Origen (reloj) | Destino en el proyecto | Contenido |
+|---|---|---|
+| `GARMIN/Activity/` | `data/raw/fit/` | Actividades (fútbol, running, etc.), 1 FIT por sesión |
+| `GARMIN/Monitor/` | `data/raw/monitoring/monitor/` | Monitoreo diario: pasos, FC continua, estrés, Body Battery |
+| `GARMIN/Sleep/` | `data/raw/monitoring/sleep/` | Sueño |
+| `GARMIN/HRVStatus/` | `data/raw/monitoring/hrv/` | Estado HRV nocturno |
+| `GARMIN/Metrics/` | `data/raw/monitoring/metrics/` | VO2max y métricas fisiológicas calculadas por Garmin |

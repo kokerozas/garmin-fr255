@@ -44,3 +44,9 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
 ## D-009 — Modo de trabajo: MVP iterativo, en pareja
 - **Estado:** aceptada (2026-08-01, preguntas 12 y 20)
 - **Decisión:** MVP funcional cuanto antes (ingesta manual → DuckDB → Streamlit básico) e iterar por capas. Claude escribe explicando cada pieza para que Jorge domine y pueda mantener el sistema.
+
+## D-010 — Fuente de datos: volcado USB del reloj
+- **Estado:** aceptada (2026-08-01)
+- **Decisión:** el volcado de la memoria del FR255 (`C:\Users\hp\Claude\Projects\Garmin Connect\GARMIN`) es la fuente inicial. Se extrajo SOLO lo relevante hacia `data/raw/`: Activity → `raw/fit/` (193 actividades, 2024-05-18 → 2026-07-20, 20 MB) · Monitor → `raw/monitoring/monitor/` (46) · Sleep → `raw/monitoring/sleep/` (73) · HRVStatus → `raw/monitoring/hrv/` (10) · Metrics → `raw/monitoring/metrics/` (100). Total: 422 archivos, 23 MB.
+- **Excluido:** el resto del volcado (Apps, Backup, Debug, EXPRESS, etc.) es sistema del reloj sin valor analítico y NO entra al proyecto. El volcado se conserva como respaldo hasta validar la primera ingesta; luego puede eliminarse.
+- **Nota:** el export completo de la cuenta Garmin queda como opcional, para monitoreo diario profundo (el reloj solo retiene ~46 días de Monitor) y validación del histórico.
