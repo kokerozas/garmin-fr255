@@ -56,3 +56,9 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
 - **Componentes:** parser FIT (`fitdecode`), base DuckDB (`activities` 193 · `samples` 243.543 · `laps` · `daily_load` 807 días · `ingest_log` · `params`), limpieza D-008 (1.134 muestras marcadas: sin_dato/fuera_de_rango/pico_artefacto), TRIMP de Banister propio con FCmax/FCrep estimadas desde datos (182/71 ppm), ATL/CTL/TSB (EWMA 7/42d) y ACWR (7d/28d) con semáforo de riesgo, dashboard Streamlit (2 vistas), tests `pytest` (5).
 - **Verificación:** 193/193 archivos cargados sin errores; ingesta incremental idempotente por hash; paleta del dashboard validada para accesibilidad (CVD) en modo claro y oscuro; smoke test del servidor Streamlit.
 - **Deuda registrada para iterar (D-009):** ingesta de `raw/monitoring/` (sueño, HRV, monitoreo diario), zonas FC y tiempo-en-zona, eficiencia/desacople, tendencias largas y comparativas en el dashboard, `sync.py` con API Garmin (fase 2 D-004), cascadas de picos FC consecutivos en la limpieza.
+
+## D-012 — Iteración 2: recuperación y zonas FC
+- **Estado:** aceptada (2026-08-02)
+- **Componentes:** ingesta de `raw/monitoring/` → `daily_metrics` (61 días reales: FC continua/mínima 37 días, sueño con puntaje y etapas 50 noches, HRV nocturno 10 días con banda personal); reconstrucción estándar de `timestamp_16`; cada noche se asigna al día en que se despierta; upsert por fecha (varios archivos aportan columnas del mismo día). Tabla `activity_zones`: tiempo en Z1-Z5 (%FCmax de D-007) para 188 actividades. Dashboard: nueva vista **Recuperación** (sueño por etapas, HRV vs banda, FC mínima, estrés) y tiempo-en-zona en Detalle.
+- **Excluido:** archivos `Metrics/` (VO2max de Garmin) usan mensajes fuera del perfil FIT público de fitdecode → pospuesto; alternativa natural: obtenerlo vía API en la fase 2 (D-004).
+- **Verificación:** pytest 9/9 · pipeline completo idempotente sobre datos reales · capturas del dashboard revisadas.

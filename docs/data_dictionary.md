@@ -20,9 +20,10 @@ Mapa entre los mensajes FIT del Forerunner 255 y las tablas DuckDB (implementado
 | `samples` | mensajes `record` | Serie ~1 s: FC (+`hr_valid`/`hr_flag` D-008), velocidad, cadencia, altitud, GPS, dinámica de carrera |
 | `laps` | mensajes `lap` | Parciales |
 | `daily_load` | derivada | Serie diaria: TRIMP, ATL, CTL, TSB, ACWR, semáforo `risk` |
+| `daily_metrics` | `raw/monitoring/*` | Por día: FC mínima (proxy reposo), pasos, estrés, sueño (puntaje + etapas), HRV nocturno con banda personal (D-012) |
+| `activity_zones` | derivada de `samples` | Tiempo en zonas Z1-Z5 (%FCmax estimada) por actividad (D-012) |
 | `params` | derivada | FCmax/FCrep vigentes y su fuente (settings o estimado) |
 | `ingest_log` | pipeline | Auditoría por archivo: ok / error / detalle (idempotencia) |
-| *(pendiente)* | `raw/monitoring/*` | Sueño, HRV y monitoreo diario → `daily_metrics` (próxima iteración) |
 
 ## Convenciones
 

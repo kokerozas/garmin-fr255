@@ -43,7 +43,7 @@ if not DB.exists():
 
 M = mtime()
 st.sidebar.title("Garmin FR255")
-page = st.sidebar.radio("Vista", ["Semana y carga", "Detalle de actividad"])
+page = st.sidebar.radio("Vista", ["Semana y carga", "Recuperación", "Detalle de actividad"])
 st.sidebar.caption("Datos: DuckDB local · métricas propias (D-007). "
                    "La ingesta se corre con scripts/ingest.py.")
 
@@ -102,6 +102,54 @@ if page == "Semana y carga":
     last = last.rename(columns={"sport": "deporte", "calidad_fc_pct": "calidad FC %"})
     st.dataframe(last, use_container_width=True, hide_index=True)
 
+# ----------------------------------------------------------------- Recuperación
+elif page == "Recuperación":
+    st.title("Recuperación")
+
+    dm = q("SELECT * FROM daily_metrics ORDER BY date_local", (), M)
+    if dm.empty:
+        st.info("Sin datos de monitoreo. Copia los archivos de Monitor/Sleep/HRVStatus "
+                "del reloj a data/raw/monitoring/ y corre scripts/ingest.py.")
+        st.stop()
+
+    last = dm.iloc[-1]
+    with_sleep = dm.dropna(subset=["sleep_score"])
+    with_hrv = dm.dropna(subset=["hrv_last_night"])
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("FC mínima (últ. día)", f"{last.hr_min:.0f} ppm" if pd.notna(last.hr_min) else "—")
+    if not with_sleep.empty:
+        s = with_sleep.iloc[-1]
+        c2.metric("Último sueño", f"{s.sleep_h:.1f} h · {s.sleep_score:.0f} pts")
+    HRV_ES = {"balanced": "🟢 Equilibrado", "unbalanced": "🟡 Desequilibrado",
+              "low": "🔴 Bajo", "poor": "🔴 Pobre", "none": "— Calibrando"}
+    if not with_hrv.empty:
+        h = with_hrv.iloc[-1]
+        c3.metric("HRV última noche", f"{h.hrv_last_night:.0f} ms")
+        c4.metric("Estado HRV", HRV_ES.get(str(h.hrv_status), str(h.hrv_status)))
+    st.caption(
+        "La FC mínima diaria es un proxy de tu FC en reposo (baja = buena recuperación). "
+        "El HRV se compara contra la banda 'equilibrada' que Garmin calibra para ti: "
+        "caer bajo la banda tras cargas altas es señal de recuperación incompleta."
+    )
+
+    st.plotly_chart(viz.fig_sleep_stages(dm), use_container_width=True)
+    st.plotly_chart(viz.fig_hrv(dm), use_container_width=True)
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        st.plotly_chart(
+            viz.fig_daily_line(dm, "hr_min", "FC mínima diaria", "ppm"),
+            use_container_width=True,
+        )
+    with cc2:
+        st.plotly_chart(
+            viz.fig_daily_line(dm, "stress_avg", "Estrés medio diario", "pts", slot=1),
+            use_container_width=True,
+        )
+    st.caption(
+        "Cobertura: el reloj solo retiene ~46 días de monitoreo y ~10 de HRV; "
+        "desde ahora cada sincronización va acumulando historia."
+    )
+
 # ---------------------------------------------------------- Detalle de actividad
 else:
     st.title("Detalle de actividad")
@@ -149,6 +197,13 @@ else:
         if n_desc:
             st.caption(f"{n_desc} muestras de FC descartadas por reglas D-008 "
                        "(marcadas, nunca borradas — el dato crudo sigue en la base).")
+
+        zdf = q(
+            "SELECT zone, seconds FROM activity_zones WHERE activity_id = ? ORDER BY zone",
+            (row.activity_id,), M,
+        )
+        if not zdf.empty:
+            st.plotly_chart(viz.fig_zone_bar(zdf), use_container_width=True)
 
     laps = q(
         """SELECT lap_index AS vuelta, ROUND(duration_s/60,1) AS minutos,

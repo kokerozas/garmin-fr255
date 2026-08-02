@@ -77,6 +77,32 @@ CREATE TABLE IF NOT EXISTS params (
     computed_at TIMESTAMP DEFAULT current_timestamp
 );
 
+CREATE TABLE IF NOT EXISTS daily_metrics (
+    date_local        DATE PRIMARY KEY,
+    hr_min            INTEGER,   -- FC mínima del día (proxy de FC en reposo)
+    hr_avg            DOUBLE,
+    steps             INTEGER,
+    stress_avg        DOUBLE,    -- 0-100 (solo valores válidos)
+    sleep_score       INTEGER,   -- 0-100 (puntaje Garmin)
+    sleep_h           DOUBLE,    -- horas dormidas (profundo+ligero+REM)
+    sleep_deep_h      DOUBLE,
+    sleep_light_h     DOUBLE,
+    sleep_rem_h       DOUBLE,
+    sleep_awake_h     DOUBLE,
+    sleep_stress      DOUBLE,
+    hrv_last_night    DOUBLE,    -- RMSSD ms
+    hrv_5min_high     DOUBLE,
+    hrv_baseline_lower DOUBLE,
+    hrv_baseline_upper DOUBLE,
+    hrv_status        VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS activity_zones (
+    activity_id VARCHAR,
+    zone        INTEGER,          -- 1..5 (% de FCmax: 50-60-70-80-90-100)
+    seconds     DOUBLE
+);
+
 CREATE TABLE IF NOT EXISTS daily_load (
     date_local   DATE PRIMARY KEY,
     trimp        DOUBLE,

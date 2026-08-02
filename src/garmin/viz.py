@@ -156,6 +156,87 @@ def fig_weekly_by_sport(acts: pd.DataFrame, title="TRIMP semanal por deporte") -
     return base_layout(fig, title)
 
 
+# Etapas de sueño: rampa ordinal de un solo tono (profundo=oscuro) + gris para despierto
+STAGE_COLORS = {"deep": "#1c5cab", "rem": "#2a78d6", "light": "#86b6ef", "awake": MUTED}
+STAGE_ES = {"deep": "Profundo", "rem": "REM", "light": "Ligero", "awake": "Despierto"}
+
+# Zonas Z1..Z5: rampa ordinal claro→oscuro (intensidad creciente)
+ZONE_COLORS = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
+
+
+def fig_sleep_stages(dm: pd.DataFrame, title="Sueño por etapas (el puntaje va en el hover)") -> go.Figure:
+    d = dm.dropna(subset=["sleep_h"]).copy()
+    fig = go.Figure()
+    for key in ("deep", "rem", "light", "awake"):
+        col = f"sleep_{key}_h"
+        fig.add_bar(
+            x=d["date_local"], y=d[col], name=STAGE_ES[key],
+            marker_color=STAGE_COLORS[key],
+            marker_line=dict(color=SURFACE, width=1),
+            customdata=d[["sleep_score"]],
+            hovertemplate="%{y:.1f} h · puntaje %{customdata[0]}<extra>" + STAGE_ES[key] + "</extra>",
+        )
+    fig.update_layout(barmode="stack", bargap=0.3, legend_traceorder="normal")
+    fig.update_yaxes(title_text="horas", title_font=dict(color=MUTED, size=12))
+    return base_layout(fig, title, height=280)
+
+
+def fig_hrv(dm: pd.DataFrame, title="HRV nocturno (RMSSD) vs tu banda personal") -> go.Figure:
+    d = dm.dropna(subset=["hrv_last_night"]).copy()
+    fig = go.Figure()
+    if not d.empty:
+        lo = d["hrv_baseline_lower"].dropna()
+        hi = d["hrv_baseline_upper"].dropna()
+        if not lo.empty and not hi.empty:
+            fig.add_hrect(
+                y0=float(lo.iloc[-1]), y1=float(hi.iloc[-1]),
+                fillcolor=STATUS["optima"], opacity=0.10, line_width=0,
+                annotation_text="banda equilibrada", annotation_position="top right",
+                annotation_font=dict(color=INK_2, size=11),
+            )
+        fig.add_scatter(
+            x=d["date_local"], y=d["hrv_last_night"], name="HRV",
+            mode="lines+markers", line=dict(color=SLOTS[0], width=2),
+            marker=dict(size=8), customdata=d[["hrv_status"]],
+            hovertemplate="%{y:.0f} ms · %{customdata[0]}<extra></extra>",
+        )
+    fig.update_yaxes(title_text="ms", title_font=dict(color=MUTED, size=12), rangemode="normal")
+    fig.update_layout(showlegend=False)
+    return base_layout(fig, title, height=260)
+
+
+def fig_daily_line(dm: pd.DataFrame, col: str, title: str, unit: str, slot: int = 0) -> go.Figure:
+    d = dm.dropna(subset=[col])
+    fig = go.Figure()
+    fig.add_scatter(
+        x=d["date_local"], y=d[col], mode="lines+markers",
+        line=dict(color=SLOTS[slot], width=2), marker=dict(size=6),
+        hovertemplate="%{y:.0f} " + unit + "<extra></extra>",
+    )
+    fig.update_yaxes(title_text=unit, title_font=dict(color=MUTED, size=12), rangemode="normal")
+    fig.update_layout(showlegend=False)
+    return base_layout(fig, title, height=240)
+
+
+def fig_zone_bar(zones: pd.DataFrame, title="Tiempo en zona (según tu FCmax)") -> go.Figure:
+    """zones: columnas zone (1..5), seconds. Barras ordinales con etiqueta directa."""
+    base = pd.DataFrame({"zone": [1, 2, 3, 4, 5]})
+    d = base.merge(zones, on="zone", how="left").fillna({"seconds": 0.0})
+    mins = d["seconds"] / 60.0
+    fig = go.Figure(
+        go.Bar(
+            x=[f"Z{int(z)}" for z in d["zone"]], y=mins,
+            marker_color=ZONE_COLORS, marker_line_width=0,
+            text=[f"{m:.0f}′" if m >= 1 else "" for m in mins],
+            textposition="outside", textfont=dict(color=INK_2, size=12),
+            hovertemplate="%{y:.1f} min<extra>%{x}</extra>",
+        )
+    )
+    fig.update_yaxes(title_text="minutos", title_font=dict(color=MUTED, size=12))
+    fig.update_layout(showlegend=False)
+    return base_layout(fig, title, height=260)
+
+
 def fig_activity_hr(samples: pd.DataFrame, title="Frecuencia cardíaca") -> go.Figure:
     """Curva de FC: muestras válidas en línea; artefactos marcados en gris."""
     fig = go.Figure()

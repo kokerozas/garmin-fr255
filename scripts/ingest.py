@@ -11,9 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from garmin.db.loader import load_directory          # noqa: E402
-from garmin.metrics.load import refresh_all          # noqa: E402
-from garmin.utils.config import db_path, load_settings  # noqa: E402
+from garmin.db.loader import load_directory              # noqa: E402
+from garmin.db.monitoring_loader import load_monitoring  # noqa: E402
+from garmin.db.schema import connect                     # noqa: E402
+from garmin.metrics.load import refresh_all              # noqa: E402
+from garmin.metrics.zones import compute_zone_times      # noqa: E402
+from garmin.utils.config import db_path, load_settings   # noqa: E402
 
 
 def main() -> None:
@@ -26,14 +29,26 @@ def main() -> None:
 
     rep = load_directory(db, fit_dir)
     print(
-        f"Ingesta       : {rep['ok']} ok, {rep['errores']} con error, "
+        f"Actividades   : {rep['ok']} ok, {rep['errores']} con error, "
         f"{rep['nuevos']} nuevos, {rep['saltados']} ya cargados"
     )
 
+    mon = load_monitoring(db, ROOT / "data/raw/monitoring")
+    resumen = " · ".join(
+        f"{k}: {v['ok']} ok" + (f", {v['errores']} err" if v["errores"] else "")
+        for k, v in mon.items()
+    )
+    print(f"Monitoreo     : {resumen}")
+
     met = refresh_all(db)
+    con = connect(db)
+    try:
+        n_zonas = compute_zone_times(con)
+    finally:
+        con.close()
     print(
         f"Métricas      : {met['trimp_calculados']} TRIMP calculados, "
-        f"serie de {met['dias_serie']} días"
+        f"{n_zonas} actividades con zonas nuevas, serie de {met['dias_serie']} días"
     )
     print(f"Estado hoy    : ACWR={met['acwr_hoy']}  riesgo={met['riesgo_hoy']}")
 
