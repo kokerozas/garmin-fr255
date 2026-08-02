@@ -164,7 +164,8 @@ STAGE_ES = {"deep": "Profundo", "rem": "REM", "light": "Ligero", "awake": "Despi
 ZONE_COLORS = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
 
 
-def fig_sleep_stages(dm: pd.DataFrame, title="Sueño por etapas (el puntaje va en el hover)") -> go.Figure:
+def fig_sleep_stages(dm: pd.DataFrame, title="Sueño por etapas (el puntaje va en el hover)",
+                     x_range=None) -> go.Figure:
     d = dm.dropna(subset=["sleep_h"]).copy()
     fig = go.Figure()
     for key in ("deep", "rem", "light", "awake"):
@@ -178,10 +179,14 @@ def fig_sleep_stages(dm: pd.DataFrame, title="Sueño por etapas (el puntaje va e
         )
     fig.update_layout(barmode="stack", bargap=0.3, legend_traceorder="normal")
     fig.update_yaxes(title_text="horas", title_font=dict(color=MUTED, size=12))
-    return base_layout(fig, title, height=280)
+    fig = base_layout(fig, title, height=280)
+    if x_range is not None:
+        fig.update_xaxes(range=x_range)
+    return fig
 
 
-def fig_hrv(dm: pd.DataFrame, title="HRV nocturno (RMSSD) vs tu banda personal") -> go.Figure:
+def fig_hrv(dm: pd.DataFrame, title="HRV nocturno (RMSSD) vs tu banda personal",
+            x_range=None) -> go.Figure:
     d = dm.dropna(subset=["hrv_last_night"]).copy()
     fig = go.Figure()
     if not d.empty:
@@ -202,10 +207,14 @@ def fig_hrv(dm: pd.DataFrame, title="HRV nocturno (RMSSD) vs tu banda personal")
         )
     fig.update_yaxes(title_text="ms", title_font=dict(color=MUTED, size=12), rangemode="normal")
     fig.update_layout(showlegend=False)
-    return base_layout(fig, title, height=260)
+    fig = base_layout(fig, title, height=260)
+    if x_range is not None:
+        fig.update_xaxes(range=x_range)
+    return fig
 
 
-def fig_daily_line(dm: pd.DataFrame, col: str, title: str, unit: str, slot: int = 0) -> go.Figure:
+def fig_daily_line(dm: pd.DataFrame, col: str, title: str, unit: str, slot: int = 0,
+                   x_range=None) -> go.Figure:
     d = dm.dropna(subset=[col])
     fig = go.Figure()
     fig.add_scatter(
@@ -215,7 +224,10 @@ def fig_daily_line(dm: pd.DataFrame, col: str, title: str, unit: str, slot: int 
     )
     fig.update_yaxes(title_text=unit, title_font=dict(color=MUTED, size=12), rangemode="normal")
     fig.update_layout(showlegend=False)
-    return base_layout(fig, title, height=240)
+    fig = base_layout(fig, title, height=240)
+    if x_range is not None:
+        fig.update_xaxes(range=x_range)
+    return fig
 
 
 def fig_zone_bar(zones: pd.DataFrame, title="Tiempo en zona (según tu FCmax)") -> go.Figure:

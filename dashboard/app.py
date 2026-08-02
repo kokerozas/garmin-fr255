@@ -79,8 +79,8 @@ if page == "Semana y carga":
         "sobre 1.5 el riesgo de lesión sube fuerte (D-006: prioridad prevención)."
     )
 
-    st.plotly_chart(viz.fig_daily_load(daily), use_container_width=True)
-    st.plotly_chart(viz.fig_acwr(daily), use_container_width=True)
+    st.plotly_chart(viz.fig_daily_load(daily), width="stretch")
+    st.plotly_chart(viz.fig_acwr(daily), width="stretch")
 
     acts = q(
         """SELECT date_local, sport, trimp FROM activities
@@ -88,7 +88,7 @@ if page == "Semana y carga":
              AND date_local >= (SELECT MAX(date_local) FROM daily_load) - INTERVAL (?) DAY""",
         (dias,), M,
     )
-    st.plotly_chart(viz.fig_weekly_by_sport(acts), use_container_width=True)
+    st.plotly_chart(viz.fig_weekly_by_sport(acts), width="stretch")
 
     st.subheader("Últimas actividades")
     last = q(
@@ -100,7 +100,7 @@ if page == "Semana y carga":
     )
     last["sport"] = last["sport"].map(viz.sport_display)
     last = last.rename(columns={"sport": "deporte", "calidad_fc_pct": "calidad FC %"})
-    st.dataframe(last, use_container_width=True, hide_index=True)
+    st.dataframe(last, width="stretch", hide_index=True)
 
 # ----------------------------------------------------------------- Recuperación
 elif page == "Recuperación":
@@ -132,22 +132,31 @@ elif page == "Recuperación":
         "caer bajo la banda tras cargas altas es señal de recuperación incompleta."
     )
 
-    st.plotly_chart(viz.fig_sleep_stages(dm), use_container_width=True)
-    st.plotly_chart(viz.fig_hrv(dm), use_container_width=True)
+    # Eje de tiempo COMPARTIDO por los 4 paneles: donde un panel se ve vacío es
+    # porque el reloj no retenía ese tipo de dato — el vacío también es información.
+    rng = [
+        pd.Timestamp(dm["date_local"].min()) - pd.Timedelta(days=1),
+        pd.Timestamp(dm["date_local"].max()) + pd.Timedelta(days=1),
+    ]
+    st.plotly_chart(viz.fig_sleep_stages(dm, x_range=rng), width="stretch")
+    st.plotly_chart(viz.fig_hrv(dm, x_range=rng), width="stretch")
     cc1, cc2 = st.columns(2)
     with cc1:
         st.plotly_chart(
-            viz.fig_daily_line(dm, "hr_min", "FC mínima diaria", "ppm"),
-            use_container_width=True,
+            viz.fig_daily_line(dm, "hr_min", "FC mínima diaria", "ppm", x_range=rng),
+            width="stretch",
         )
     with cc2:
         st.plotly_chart(
-            viz.fig_daily_line(dm, "stress_avg", "Estrés medio diario", "pts", slot=1),
-            use_container_width=True,
+            viz.fig_daily_line(dm, "stress_avg", "Estrés medio diario", "pts",
+                               slot=1, x_range=rng),
+            width="stretch",
         )
     st.caption(
-        "Cobertura: el reloj solo retiene ~46 días de monitoreo y ~10 de HRV; "
-        "desde ahora cada sincronización va acumulando historia."
+        "Cobertura real del reloj (no del sistema): sueño ~73 noches, monitoreo continuo "
+        "~46 días, HRV ~10 días — por eso los paneles se llenan desde fechas distintas. "
+        "El historial anterior vive en la nube de Garmin: se rellenará con el export de "
+        "cuenta / fase 2. Desde ahora, cada sincronización acumula historia."
     )
 
 # ---------------------------------------------------------- Detalle de actividad
@@ -188,9 +197,9 @@ else:
     if samples.empty:
         st.info("Esta actividad no tiene serie de muestras (archivo sin registros por segundo).")
     else:
-        st.plotly_chart(viz.fig_activity_hr(samples), use_container_width=True)
+        st.plotly_chart(viz.fig_activity_hr(samples), width="stretch")
         if (samples["speed_ms"].fillna(0) > 0).any():
-            st.plotly_chart(viz.fig_activity_speed(samples, row.sport), use_container_width=True)
+            st.plotly_chart(viz.fig_activity_speed(samples, row.sport), width="stretch")
         else:
             st.caption("Sin datos de velocidad en esta actividad.")
         n_desc = int((~samples["hr_valid"].fillna(False)).sum())
@@ -203,7 +212,7 @@ else:
             (row.activity_id,), M,
         )
         if not zdf.empty:
-            st.plotly_chart(viz.fig_zone_bar(zdf), use_container_width=True)
+            st.plotly_chart(viz.fig_zone_bar(zdf), width="stretch")
 
     laps = q(
         """SELECT lap_index AS vuelta, ROUND(duration_s/60,1) AS minutos,
@@ -213,4 +222,4 @@ else:
     )
     if len(laps) > 1:
         st.subheader("Parciales")
-        st.dataframe(laps, use_container_width=True, hide_index=True)
+        st.dataframe(laps, width="stretch", hide_index=True)
