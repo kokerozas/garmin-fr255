@@ -167,17 +167,21 @@ ZONE_COLORS = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"]
 def fig_sleep_stages(dm: pd.DataFrame, title="Sueño por etapas (el puntaje va en el hover)",
                      x_range=None) -> go.Figure:
     d = dm.dropna(subset=["sleep_h"]).copy()
+    # En rangos largos cada barra mide ~1 px: el separador blanco la taparía por
+    # completo (bug visto con el histórico completo). Sin separador cuando es denso.
+    dense = len(d) > 150
     fig = go.Figure()
     for key in ("deep", "rem", "light", "awake"):
         col = f"sleep_{key}_h"
         fig.add_bar(
             x=d["date_local"], y=d[col], name=STAGE_ES[key],
             marker_color=STAGE_COLORS[key],
-            marker_line=dict(color=SURFACE, width=1),
+            marker_line=dict(color=SURFACE, width=0 if dense else 1),
             customdata=d[["sleep_score"]],
             hovertemplate="%{y:.1f} h · puntaje %{customdata[0]}<extra>" + STAGE_ES[key] + "</extra>",
         )
-    fig.update_layout(barmode="stack", bargap=0.3, legend_traceorder="normal")
+    fig.update_layout(barmode="stack", bargap=0.05 if dense else 0.3,
+                      legend_traceorder="normal")
     fig.update_yaxes(title_text="horas", title_font=dict(color=MUTED, size=12))
     fig = base_layout(fig, title, height=280)
     if x_range is not None:

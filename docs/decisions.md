@@ -72,3 +72,10 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
 - **Dashboard:** Recuperación con selector de rango (90d/6m/1a/Todo), FC en reposo real (COALESCE oficial→proxy), gráfico VO2max.
 - **Backlog:** FITs originales antiguos de `Uploaded-Files` (darían series 1s a las 50 históricas), Body Battery y predicciones de carrera como gráficos, `MetricsAcuteTrainingLoad` de Garmin como referencia comparativa vs nuestro ATL.
 - **Verificación:** pytest 12/12 · dedupe verificado (0 duplicados) · cobertura por año validada · capturas revisadas.
+
+## D-014 — Guías por panel y motor de recomendaciones
+- **Estado:** aceptada (2026-08-02)
+- **Guías (src/garmin/guides.py):** botón ℹ️ "¿Cómo leer este panel?" en los 14 paneles de las 3 vistas — qué muestra, cómo se calcula, qué mirar y señales de alerta, en términos técnicos e intuitivos.
+- **Recomendaciones (src/garmin/metrics/recommendations.py):** motor de reglas TRANSPARENTES (sin caja negra) sobre el estado actual: ACWR (>1.5 alerta, 1.3-1.5 precaución, <0.8 subcarga), parones (≥10 días → protocolo de regreso gradual), TSB<-25, monotonía de Foster (>2.0), HRV bajo banda personal, sueño reciente <6.5 h, FC reposo +5 ppm sobre norma de 28 días. Cada recomendación cita el dato que la disparó; siempre incluye la regla fija del dolor (el sistema no lo ve) y disclaimer no-médico. Sección "🧭 Recomendaciones de la semana" en Semana y carga.
+- **Verificación HRV (pregunta de Jorge):** confirmado con evidencia triple que el HRV existe solo desde 2026-07-18 — 0 archivos HRV en los 140 del export, 0 campos HRV en los JSON de sueño, primer HRVStatus del reloj = 18-jul. No es bug: el dato nació ese día y crece con cada sincronización.
+- **Verificación:** pytest 16/16 · recomendaciones probadas sobre estado real (disparó correctamente "regreso gradual, 13 días" y "sueño corto 4.3 h") · capturas revisadas.

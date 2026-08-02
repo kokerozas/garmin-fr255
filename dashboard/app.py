@@ -16,7 +16,8 @@ import duckdb  # noqa: E402
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from garmin import viz  # noqa: E402
+from garmin import guides, viz  # noqa: E402
+from garmin.metrics.recommendations import build_recommendations  # noqa: E402
 from garmin.utils.config import db_path  # noqa: E402
 
 st.set_page_config(page_title="Garmin FR255 — Carga y riesgo", layout="wide")
@@ -35,6 +36,17 @@ def q(sql: str, params: tuple = (), _mtime: float = 0.0) -> pd.DataFrame:
 
 def mtime() -> float:
     return DB.stat().st_mtime if DB.exists() else 0.0
+
+
+@st.cache_data(show_spinner=False)
+def recomendaciones(_mtime: float) -> list[dict]:
+    return build_recommendations(DB)
+
+
+def guia(key: str) -> None:
+    """Botón ℹ️ con la explicación técnica e intuitiva del panel (D-014)."""
+    with st.popover("ℹ️ ¿Cómo leer este panel?"):
+        st.markdown(guides.GUIDES[key])
 
 
 if not DB.exists():
@@ -78,9 +90,25 @@ if page == "Semana y carga":
         "ACWR = carga media 7 días / carga media 28 días. Zona óptima 0.8–1.3; "
         "sobre 1.5 el riesgo de lesión sube fuerte (D-006: prioridad prevención)."
     )
+    guia("kpis_carga")
+
+    st.subheader("🧭 Recomendaciones de la semana")
+    ICONO = {"alerta": st.error, "atencion": st.warning, "info": st.info, "ok": st.success}
+    for r in recomendaciones(M):
+        ICONO.get(r["nivel"], st.info)(f"**{r['titulo']}** — {r['detalle']}")
+    cols_g = st.columns([1, 4])
+    with cols_g[0]:
+        guia("recomendaciones")
+    st.caption(
+        "Motor de reglas transparente sobre tus métricas (no es consejo médico; "
+        "ante dolor real, profesional de salud)."
+    )
+    st.divider()
 
     st.plotly_chart(viz.fig_daily_load(daily), width="stretch")
+    guia("carga_diaria")
     st.plotly_chart(viz.fig_acwr(daily), width="stretch")
+    guia("acwr")
 
     acts = q(
         """SELECT date_local, sport, trimp FROM activities
@@ -89,6 +117,7 @@ if page == "Semana y carga":
         (dias,), M,
     )
     st.plotly_chart(viz.fig_weekly_by_sport(acts), width="stretch")
+    guia("semanal_deporte")
 
     st.subheader("Últimas actividades")
     last = q(
@@ -145,6 +174,7 @@ elif page == "Recuperación":
         "'equilibrada' que Garmin calibra para ti: caer bajo la banda tras cargas altas "
         "es señal de recuperación incompleta."
     )
+    guia("kpis_recuperacion")
 
     # Eje de tiempo COMPARTIDO por los 4 paneles: donde un panel se ve vacío es
     # porque el reloj no retenía ese tipo de dato — el vacío también es información.
@@ -153,24 +183,29 @@ elif page == "Recuperación":
         pd.Timestamp(dm["date_local"].max()) + pd.Timedelta(days=1),
     ]
     st.plotly_chart(viz.fig_sleep_stages(dm, x_range=rng), width="stretch")
+    guia("sueno")
     st.plotly_chart(viz.fig_hrv(dm, x_range=rng), width="stretch")
+    guia("hrv")
     cc1, cc2 = st.columns(2)
     with cc1:
         st.plotly_chart(
             viz.fig_daily_line(dm, "fc_reposo", "FC en reposo", "ppm", x_range=rng),
             width="stretch",
         )
+        guia("fc_reposo")
     with cc2:
         st.plotly_chart(
             viz.fig_daily_line(dm, "stress_avg", "Estrés medio diario", "pts",
                                slot=1, x_range=rng),
             width="stretch",
         )
+        guia("estres")
     st.plotly_chart(
         viz.fig_daily_line(dm, "vo2max", "VO2max (medición Garmin)", "ml/kg/min",
                            slot=2, x_range=rng, fmt=".1f"),
         width="stretch",
     )
+    guia("vo2max")
     st.caption(
         "Historial completo desde octubre 2023 gracias al export de cuenta (D-013): "
         "571+ noches de sueño, FC de reposo oficial de Garmin y VO2max. El HRV nocturno "
@@ -217,8 +252,10 @@ else:
         st.info("Esta actividad no tiene serie de muestras (archivo sin registros por segundo).")
     else:
         st.plotly_chart(viz.fig_activity_hr(samples), width="stretch")
+        guia("fc_actividad")
         if (samples["speed_ms"].fillna(0) > 0).any():
             st.plotly_chart(viz.fig_activity_speed(samples, row.sport), width="stretch")
+            guia("ritmo")
         else:
             st.caption("Sin datos de velocidad en esta actividad.")
         n_desc = int((~samples["hr_valid"].fillna(False)).sum())
@@ -232,6 +269,7 @@ else:
         )
         if not zdf.empty:
             st.plotly_chart(viz.fig_zone_bar(zdf), width="stretch")
+            guia("zonas")
 
     laps = q(
         """SELECT lap_index AS vuelta, ROUND(duration_s/60,1) AS minutos,
