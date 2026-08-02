@@ -87,3 +87,9 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
 - **Motor de recomendaciones ampliado:** dolor ≥7 → alerta (no se juega); misma zona ≥4 en ≥2 registros → molestia recurrente (evitar sprints máximos); molestia ≥4 + ACWR ≥1.3 → combo pre-lesión típico.
 - **Tarjeta "¿Puedo jugar hoy?"** al tope de Semana y carga: semáforo global + 3 factores (Carga: ACWR/parones · Recuperación: sueño/HRV/FC reposo · Molestias: registros de 7 días), cada uno con su razón en una línea. Diseñada para leerse en 5 s el día de partido (uso real declarado por Jorge).
 - **Verificación:** pytest 19/19 (upsert, sRPE, recurrencia, combos, semáforo en sano/dolor/parón) · smoke test y capturas · con el estado real de Jorge la tarjeta marcó 🔴 por sus 13 días de parón — coherente con las recomendaciones.
+
+## D-016 — REGLA TRANSVERSAL: rigor científico, nada inventado
+- **Estado:** aceptada (2026-08-02, declarada por Jorge para TODO el proyecto)
+- **Regla:** toda métrica, análisis o visualización avanzada sigue un framework científico publicado. Cada métrica se implementa SOLO con referencia primaria + limitaciones documentadas en `docs/metodologia.md` (creado en esta decisión: Banister/Morton TRIMP · Williams EWMA · Hulin/Gabbett ACWR con críticas de Impellizzeri · Foster monotonía y sRPE · ACSM/Seiler zonas · Plews/Buchheit HRV y FC reposo · Milewski/von Rosen sueño · Saw/Clarsen autorreporte). Los valores de Garmin se tratan como mediciones de tercero (referencia, no verdad). Las guías ℹ️ deben ser consistentes con la metodología.
+- **Auditoría retroactiva:** todas las métricas ya implementadas (D-007, D-011, D-012, D-014, D-015) quedaron mapeadas a su literatura — ninguna era inventada.
+- **Además:** se creó `CLAUDE.md` en la raíz: guía del proyecto para cualquier sesión de Claude (Cowork, Claude Code CLI o web) con arquitectura, invariantes, comandos y esta regla como suprema. El repo queda auto-descriptivo.
