@@ -93,3 +93,98 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
 - **Regla:** toda métrica, análisis o visualización avanzada sigue un framework científico publicado. Cada métrica se implementa SOLO con referencia primaria + limitaciones documentadas en `docs/metodologia.md` (creado en esta decisión: Banister/Morton TRIMP · Williams EWMA · Hulin/Gabbett ACWR con críticas de Impellizzeri · Foster monotonía y sRPE · ACSM/Seiler zonas · Plews/Buchheit HRV y FC reposo · Milewski/von Rosen sueño · Saw/Clarsen autorreporte). Los valores de Garmin se tratan como mediciones de tercero (referencia, no verdad). Las guías ℹ️ deben ser consistentes con la metodología.
 - **Auditoría retroactiva:** todas las métricas ya implementadas (D-007, D-011, D-012, D-014, D-015) quedaron mapeadas a su literatura — ninguna era inventada.
 - **Además:** se creó `CLAUDE.md` en la raíz: guía del proyecto para cualquier sesión de Claude (Cowork, Claude Code CLI o web) con arquitectura, invariantes, comandos y esta regla como suprema. El repo queda auto-descriptivo.
+## D-017 — HALLAZGOS DE AUDITORÍA: lo que los datos reales dijeron
+- **Estado:** aceptada (2026-08-02, auditoría de `garmin.duckdb` sobre las 10 tablas)
+- **Por qué existe esta entrada:** antes de implementar métricas nuevas se auditó la base real. Tres hallazgos
+  cambiaron el diseño de la iteración y deben quedar registrados aunque no sean "código".
+- **① El perfil Fútbol NO graba a 1 Hz.** Intervalo mediano entre muestras = **2.74 s** (mín 2.04, máx 25.9);
+  cero de las 96 sesiones de fútbol baja de 1.5 s. El reloj está en *Smart Recording* para ese perfil, mientras
+  que "Carrera" y "Trail" sí están a 1.00 s exacto. Consecuencia: un sprint de fútbol dura 2-4 s y cae dentro de
+  1-2 muestras — **no se puede reconstruir**. Las métricas de alta velocidad (HSR, conteo de sprints,
+  aceleraciones) quedan DESHABILITADAS por diseño, no por falta de código. Los 96 partidos históricos no son
+  reparables: el reloj descartó las muestras en origen.
+  **Acción para Jorge:** en el reloj, *Configuración > Sistema > Grabación de datos > Cada segundo*. Desde ese
+  día las sesiones nuevas se graban a 1 Hz y esas métricas se activan solas.
+- **② La velocidad cruda tiene ruido puro.** En fútbol el percentil 99 es 12.12 m/s (43.6 km/h) y el máximo
+  31.67 m/s (**114 km/h**). Se implementa limpieza `speed_valid`/`speed_flag` espejo de la de FC (D-008): se
+  MARCA, jamás se borra.
+- **③ Déficit de sueño crónico.** Media del último año: **5.41 ± 1.63 h** (n=169), con 82 % de noches bajo 7 h
+  y 94 % bajo 8 h. Es el hallazgo de salud más accionable del proyecto y el de mejor respaldo en la literatura
+  (Milewski 2014: <8 h → 1.7× lesiones). Cautela: el sueño de reloj de muñeca *sobreestima* frente a
+  polisomnografía, así que 5.4 h medidas son probablemente menos de 5.4 h reales.
+- **Otros:** `wellness_log` con 0 filas (D-015 construido pero sin uso aún) · 90 de 96 partidos con un solo lap
+  (no hay marcador de medio tiempo: las mitades se parten por tiempo) · `laps.avg_speed_ms` 100 % vacía.
+
+## D-018 — Métricas nuevas: el reencuadre científico de la carga y la recuperación
+- **Estado:** aceptada (2026-08-02, tras investigación de literatura 2013-2025 con 73 hallazgos referenciados)
+- **① El ACWR baja de categoría (el cambio conceptual más importante).** Impellizzeri et al. (2021,
+  *Sports Medicine* 51(3):581-592) sustituyeron la carga crónica por valores **aleatorios** y el ACWR siguió
+  asociándose con lesión igual de bien: la asociación no venía del cociente. Lolli et al. (2019, BJSM) muestran
+  el acoplamiento matemático, y el único ECA existente (Dalen-Lorentsen 2021, BJSM, 482 futbolistas juveniles,
+  10 meses) no encontró diferencia al planificar con ACWR. **Decisión:** la carga aguda ABSOLUTA de 7 días y su
+  **percentil personal** pasan a primer plano; el ACWR se conserva como señal descriptiva secundaria, con su
+  guía ℹ️ reescrita. No se elimina — se le quita el rol de oráculo.
+- **② Cambio semana-a-semana y cargas acumuladas** 14/21/28 d (Rogalski 2013; Cross 2016), con el umbral de
+  "2 DE" individualizado contra la propia variabilidad de Jorge en vez de importar los AU de rugby.
+- **③ Bandas personales en vez de umbrales importados.** La regla "+5 ppm de FC en reposo" se jubila: con la DE
+  real de Jorge (3.6 ppm) equivalía a 1.4 DE, entre 3 y 5 veces más insensible que el estándar. Se reemplaza por
+  el *smallest worthwhile change* = media 28 d ± 0.5 × DE (Hopkins 2000; Buchheit 2014).
+- **④ Deuda de sueño acumulada** 7/14/28 d (Milewski 2014; von Rosen 2017), con una regla dura: **una noche sin
+  dato no es deuda cero** — se exige mínimo de noches válidas y se muestra el % de cobertura junto al número.
+- **⑤ Índice de disposición por dominios** (autonómico / sueño / carga / subjetivo) con z-scores individuales
+  (Buchheit 2014; Thornton 2019; Robertson 2017). Se agrupa por dominio ANTES de promediar porque `sleep_score`,
+  estrés y Body Battery salen del mismo motor propietario de Garmin y promediarlos como iguales le daría triple
+  peso a ese bloque. Nunca se imputa: si falta un dato, baja `n_dominios`. **Un conteo de banderas no es un
+  modelo de riesgo calibrado**, y así se declara en la interfaz.
+- **⑥ Carga externa con portero.** `gps_grade` (alta/media/baja/sin_gps) decide qué se calcula: distancia y
+  m/min siempre; HSR y sprints solo con grado alto. Índice de eficiencia metros/TRIMP (Akubat 2014), con la
+  desviación declarada de usar TRIMP de Banister en lugar del iTRIMP original.
+- **⑦ Fatiga intra-partido** (Mohr 2003): coste cardíaco de la 2ª mitad vs la 1ª, partido por tiempo porque no
+  hay marcador de descanso. Serie longitudinal contra sí misma, nunca valor absoluto.
+- **⑧ Registro subjetivo validado:** dRPE piernas/respiración (Los Arcos 2014; McLaren 2017) — el **único canal
+  disponible para estimar carga neuromuscular** con este hardware, porque la FC de muñeca es ciega a las
+  aceleraciones y frenadas que rompen isquios y aductores. Más Hooper de 4 ítems (Hooper 1995) y OSTRC-H2
+  condicional a las zonas ya marcadas (Clarsen 2013). Los ítems se analizan por separado con z-scores, **nunca
+  sumados en un índice único** (Duignan 2020). Lista de exclusión deliberada: no se pregunta lo que el reloj ya
+  mide mejor (horas de sueño, FC de reposo, pasos, duración).
+- **Criterio de adherencia como requisito de diseño:** <30 segundos o se abandona (Saw 2015). El tiempo de
+  registro se mide y se grafica; si sube, el formulario está creciendo demasiado.
+- **Toda la ciencia, con limitaciones, en `docs/metodologia.md`.**
+
+## D-019 — Sistema de visualización: jerarquía, bandas personales y la regla del 3D
+- **Estado:** aceptada (2026-08-02, respuesta a la pregunta de Jorge sobre gráficas 3D)
+- **La regla del 3D, en tres líneas:**
+  1. Dato **abstracto** (carga, HRV, molestias) → **2D siempre**.
+  2. Dato **intrínsecamente espacial** (ruta GPS con altitud) → **3D justificado** para entender la FORMA,
+     nunca para leer valores, y siempre con su equivalente 2D de lectura al lado.
+  3. Todo gráfico 3D lleva rótulo visible de exploración y **jamás alimenta el motor de recomendaciones ni la
+     tarjeta "¿Puedo jugar hoy?"**.
+- **Racional, con los matices que la evidencia exige.** Cleveland & McGill (1984) ordenaron experimentalmente
+  los canales perceptuales: posición > longitud > ángulo > área > volumen. El 3D mueve el dato desde "posición"
+  hacia "volumen y profundidad", y añade oclusión, distorsión de perspectiva y texto inclinado (Munzner 2014).
+  Sedlmair, Munzner & Tory (2013) compararon 816 scatterplots y concluyeron que el scatter 3D interactivo
+  "rara vez ayuda y a menudo perjudica". **Pero no es dogma:** Zacks et al. (1998) concluyen que las advertencias
+  sobre las claves 3D "pueden estar exageradas" frente al efecto del contexto gráfico, y Siegrist (1996) no
+  halló pérdida de precisión en barras 3D (sí en quesos 3D). Y St. John et al. (2001), con seis experimentos,
+  mostraron que el 3D **sí gana** cuando la tarea es comprender una forma tridimensional real.
+  **Conclusión honesta: el 3D no es un crimen, es un impuesto** — cuesta tiempo de lectura y algo de precisión,
+  y hay que preguntarse qué compra a cambio. Para carga y recuperación no compra nada; para un cerro, sí.
+- **Casos concretos resueltos:** superficie 3D de carga×tiempo **descartada** (la carga en el tiempo es
+  univariada: obliga a inventar un segundo eje) → se reemplaza por **heatmap de calendario** (van Wijk & van
+  Selow 1999), que codifica las mismas variables con ambas dimensiones temporales en posición.
+  Scatter 3D carga-recuperación-molestias → se implementa como **juguete de exploración rotulado**, y su
+  alternativa 2D honesta es el scatter con color y tamaño (4 variables, las 2 más importantes en posición).
+  Ruta GPS con altitud → **3D implementado**, con `aspectmode='data'` para no exagerar el relieve y su perfil 2D
+  al lado.
+- **Radar descartado para las 7 zonas de molestias** → **dot plot ordenado (dumbbell)**: el radar compara mal
+  longitudes en ángulos distintos, su orden de ejes es arbitrario y el área crece con el CUADRADO del valor
+  (Few 2005; Cleveland & McGill 1984). El dumbbell usa posición sobre escala común y además muestra el cambio
+  respecto al promedio de 28 días.
+- **Jerarquía del reporte** (Buchheit 2017, *"Want to see my report, coach?"*): lo accionable arriba, el detalle
+  abajo. Bandas de referencia individuales (media móvil ± SWC) como patrón visual central del monitoreo n=1.
+- **Librería: se mantiene Plotly** y se activa la interactividad que ya tenía sin usarse (rangeselector,
+  rangeslider, `on_select` para drill-down). No se añaden Altair ni ECharts: romperían el sistema de paleta CVD
+  centralizado en `viz.py` a cambio de una ganancia marginal.
+- **Tema claro y oscuro:** los tokens de color dejan de estar fijos en modo claro; los valores validados CVD del
+  modo claro se conservan intactos.
+

@@ -136,6 +136,84 @@ CREATE TABLE IF NOT EXISTS daily_load (
     acwr         DOUBLE,   -- ratio agudo:crónico (7d/28d, promedios móviles)
     risk         VARCHAR   -- baja | optima | precaucion | alta
 );
+
+-- Serie derivada de recuperación (D-017): bandas personales, no umbrales importados.
+CREATE TABLE IF NOT EXISTS daily_recovery (
+    date_local     DATE PRIMARY KEY,
+    rhr_7d         DOUBLE,   -- media móvil 7d de FC en reposo
+    rhr_ref        DOUBLE,   -- media móvil 28d (referencia personal)
+    rhr_band_lo    DOUBLE,   -- referencia ± 0.5·DE  (SWC de Hopkins 2000)
+    rhr_band_hi    DOUBLE,
+    rhr_state      VARCHAR,  -- bajo_banda | dentro | sobre_banda
+    rhr_days_out   INTEGER,  -- días consecutivos sobre la banda
+    sleep_debt_7d  DOUBLE,   -- horas de déficit acumulado (Milewski 2014)
+    sleep_debt_14d DOUBLE,
+    sleep_debt_28d DOUBLE,
+    sleep_cov_7d   DOUBLE,   -- % de noches con dato en la ventana (honestidad del dato)
+    sleep_7d       DOUBLE,   -- media móvil 7d de horas dormidas
+    sleep_ref      DOUBLE,   -- media móvil 28d
+    ln_rmssd_7d    DOUBLE,   -- Ln rMSSD media móvil 7d (Plews & Buchheit 2013)
+    ln_rmssd_cv    DOUBLE    -- coeficiente de variación de Ln rMSSD
+);
+
+-- Índice compuesto de disposición por z-scores individuales (D-017).
+CREATE TABLE IF NOT EXISTS daily_readiness (
+    date_local        DATE PRIMARY KEY,
+    z_autonomico      DOUBLE,   -- FC reposo (invertida) + HRV
+    z_sueno           DOUBLE,   -- horas + puntaje
+    z_carga           DOUBLE,   -- TSB normalizado
+    z_subjetivo       DOUBLE,   -- Hooper (cuando exista registro)
+    indice            DOUBLE,   -- promedio de los dominios disponibles
+    n_dominios        INTEGER,  -- cuántos pudieron evaluarse (nunca se imputa)
+    dominios_alerta   INTEGER   -- cuántos por debajo del umbral
+);
+
+-- Carga externa por sesión (D-017). Solo se puebla si la señal GPS lo permite.
+CREATE TABLE IF NOT EXISTS activity_external (
+    activity_id     VARCHAR PRIMARY KEY,
+    distance_m      DOUBLE,
+    dur_total_min   DOUBLE,
+    dur_activa_min  DOUBLE,   -- tiempo en Z2..Z5 (proxy de tiempo jugado)
+    m_per_min       DOUBLE,   -- sobre duración total
+    m_per_min_act   DOUBLE,   -- sobre duración activa
+    hsr_m           DOUBLE,   -- distancia sobre umbral alto (NULL si gps_grade no lo permite)
+    sprint_m        DOUBLE,
+    n_sprints       INTEGER,
+    v_max_ms        DOUBLE,   -- velocidad pico válida (tras limpieza)
+    eff_index       DOUBLE,   -- metros por unidad de TRIMP (Akubat 2014)
+    gps_grade       VARCHAR   -- alta | media | baja | sin_gps
+);
+
+-- Fatiga intra-sesión: 1ª vs 2ª mitad (Mohr 2003), D-017.
+CREATE TABLE IF NOT EXISTS activity_intrasession (
+    activity_id     VARCHAR PRIMARY KEY,
+    hr1             DOUBLE,   -- FC media 1ª mitad
+    hr2             DOUBLE,
+    pct_fcmax1      DOUBLE,
+    pct_fcmax2      DOUBLE,
+    dist1_m         DOUBLE,
+    dist2_m         DOUBLE,
+    vel1_ms         DOUBLE,
+    vel2_ms         DOUBLE,
+    coste1          DOUBLE,   -- %FCreserva por m/s (coste cardíaco)
+    coste2          DOUBLE,
+    decoupling_pct  DOUBLE,   -- (coste2/coste1 - 1)·100
+    dist_drop_pct   DOUBLE,   -- caída de distancia 2ª vs 1ª
+    metodo          VARCHAR   -- 'tiempo' (mitades por tiempo) | 'laps'
+);
+
+-- Vigilancia de problemas por sobrecarga, OSTRC-H2 (Clarsen 2013/2020). D-018.
+CREATE TABLE IF NOT EXISTS ostrc_log (
+    week_start   DATE,
+    zone         VARCHAR,
+    q1           INTEGER,   -- participación   0/8/17/25
+    q2           INTEGER,   -- volumen         0/6/13/19/25
+    q3           INTEGER,   -- rendimiento     0/6/13/19/25
+    q4           INTEGER,   -- síntomas        0/8/17/25
+    severity     INTEGER,   -- suma 0-100
+    created_at   TIMESTAMP DEFAULT current_timestamp,
+    PRIMARY KEY (week_start, zone)
+);
 """
 
 
@@ -145,6 +223,31 @@ MIGRATIONS = [
     "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS vo2max DOUBLE",
     "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS body_battery_max INTEGER",
     "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS body_battery_min INTEGER",
+    # --- D-017: calidad de la señal externa y carga absoluta ---
+    "ALTER TABLE activities ADD COLUMN IF NOT EXISTS sample_dt_s DOUBLE",
+    "ALTER TABLE activities ADD COLUMN IF NOT EXISTS gps_grade VARCHAR",
+    "ALTER TABLE samples ADD COLUMN IF NOT EXISTS speed_valid BOOLEAN",
+    "ALTER TABLE samples ADD COLUMN IF NOT EXISTS speed_flag VARCHAR",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS load_7d DOUBLE",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS load_14d DOUBLE",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS load_21d DOUBLE",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS load_28d DOUBLE",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS load_7d_pct DOUBLE",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS wow_change DOUBLE",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS wow_flag VARCHAR",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS monotonia DOUBLE",
+    "ALTER TABLE daily_load ADD COLUMN IF NOT EXISTS strain DOUBLE",
+    # --- D-017: regularidad del sueño (necesita los timestamps del export) ---
+    "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_start_utc TIMESTAMP",
+    "ALTER TABLE daily_metrics ADD COLUMN IF NOT EXISTS sleep_end_utc TIMESTAMP",
+    # --- D-018: registro subjetivo ampliado ---
+    "ALTER TABLE wellness_log ADD COLUMN IF NOT EXISTS rpe_legs INTEGER",
+    "ALTER TABLE wellness_log ADD COLUMN IF NOT EXISTS rpe_breath INTEGER",
+    "ALTER TABLE wellness_log ADD COLUMN IF NOT EXISTS hooper_sueno INTEGER",
+    "ALTER TABLE wellness_log ADD COLUMN IF NOT EXISTS hooper_fatiga INTEGER",
+    "ALTER TABLE wellness_log ADD COLUMN IF NOT EXISTS hooper_estres INTEGER",
+    "ALTER TABLE wellness_log ADD COLUMN IF NOT EXISTS hooper_doms INTEGER",
+    "ALTER TABLE wellness_log ADD COLUMN IF NOT EXISTS segundos_registro DOUBLE",
 ]
 
 

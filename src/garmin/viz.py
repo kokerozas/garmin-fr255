@@ -5,19 +5,52 @@ Paleta y reglas según el sistema de visualización del proyecto:
 - Un solo eje Y por gráfico. Leyenda visible cuando hay ≥2 series.
 - Colores de estado reservados para el semáforo de riesgo (icono + texto, nunca solo color).
 Paleta categórica validada (CVD-safe, adjacent pairs, light y dark).
+
+LA REGLA DEL 3D (D-019). El 3D no está prohibido: está condicionado. Cleveland &
+McGill (1984, JASA 79(387):531-554) ordenaron experimentalmente los canales
+perceptuales — posición > longitud > ángulo > área > volumen — y el 3D empuja el
+dato desde "posición" hacia "volumen y profundidad", además de añadir oclusión y
+distorsión de perspectiva (Munzner 2014, cap. 6 "No Unjustified 3D"). Pero la
+evidencia tiene matices: Zacks et al. (1998, J Exp Psychol Appl 4(2):119-138)
+concluyen que las advertencias sobre las claves 3D "pueden estar exageradas"
+frente al efecto del contexto gráfico, y St. John et al. (2001, Human Factors
+43(1):79-98) mostraron que el 3D SÍ gana cuando la tarea es comprender una forma
+tridimensional real. De ahí las tres líneas que rigen este módulo:
+  1. dato abstracto (carga, HRV, molestias) → 2D siempre;
+  2. dato intrínsecamente espacial (ruta con altitud) → 3D para entender la FORMA,
+     nunca para leer valores, y siempre con su equivalente 2D al lado;
+  3. todo 3D va rotulado como exploración y jamás alimenta las recomendaciones.
 """
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-# --- Tokens (modo claro) ---
+# --- Tokens (modo claro) — valores validados CVD, NO cambiar ---
 SURFACE = "#fcfcfb"
 INK = "#0b0b0b"
 INK_2 = "#52514e"
 MUTED = "#898781"
 GRID = "#e1e0d9"
 BASELINE = "#c3c2b7"
+
+# Modo oscuro: mismo papel, tinta invertida. Los SLOTS no cambian de matiz (siguen
+# siendo los mismos colores validados), solo cambia el fondo sobre el que se leen.
+_DARK = {
+    "surface": "#14140f", "ink": "#f4f3ee", "ink_2": "#c3c2b7",
+    "muted": "#898781", "grid": "#2e2d27", "baseline": "#52514e",
+}
+_LIGHT = {
+    "surface": SURFACE, "ink": INK, "ink_2": INK_2,
+    "muted": MUTED, "grid": GRID, "baseline": BASELINE,
+}
+
+
+def theme(dark: bool = False) -> dict:
+    """Tokens de color del tema. El claro es el sistema validado; el oscuro lo espeja."""
+    return dict(_DARK if dark else _LIGHT)
 
 # Paleta categórica en orden fijo (slots 1-8, validada)
 SLOTS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
@@ -62,22 +95,44 @@ def sport_key(sport: str | None) -> str:
     return sport if sport in SPORT_COLORS else "otros"
 
 
-def base_layout(fig: go.Figure, title: str | None = None, height: int = 340) -> go.Figure:
+def base_layout(fig: go.Figure, title: str | None = None, height: int = 340,
+                dark: bool = False) -> go.Figure:
+    t = theme(dark)
     fig.update_layout(
         title=title,
         height=height,
-        paper_bgcolor=SURFACE,
-        plot_bgcolor=SURFACE,
-        font=dict(family='system-ui, -apple-system, "Segoe UI", sans-serif', color=INK, size=13),
+        paper_bgcolor=t["surface"],
+        plot_bgcolor=t["surface"],
+        font=dict(family='system-ui, -apple-system, "Segoe UI", sans-serif',
+                  color=t["ink"], size=13),
         margin=dict(l=10, r=10, t=48 if title else 16, b=10),
-        legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0, font=dict(color=INK_2, size=12)),
+        legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0,
+                    font=dict(color=t["ink_2"], size=12)),
         hovermode="x unified",
-        hoverlabel=dict(bgcolor="white", font=dict(color=INK)),
+        hoverlabel=dict(bgcolor=t["surface"], font=dict(color=t["ink"])),
     )
-    fig.update_xaxes(gridcolor=GRID, linecolor=BASELINE, tickfont=dict(color=MUTED), zeroline=False)
+    fig.update_xaxes(gridcolor=t["grid"], linecolor=t["baseline"],
+                     tickfont=dict(color=t["muted"]), zeroline=False)
     fig.update_yaxes(
-        gridcolor=GRID, linecolor=BASELINE, tickfont=dict(color=MUTED),
-        zeroline=True, zerolinecolor=BASELINE, zerolinewidth=1, rangemode="tozero",
+        gridcolor=t["grid"], linecolor=t["baseline"], tickfont=dict(color=t["muted"]),
+        zeroline=True, zerolinecolor=t["baseline"], zerolinewidth=1, rangemode="tozero",
+    )
+    return fig
+
+
+def add_rangeselector(fig: go.Figure, slider: bool = True) -> go.Figure:
+    """Botones 3m/6m/1a/todo + slider. Plotly ya lo traía; simplemente no se usaba."""
+    fig.update_xaxes(
+        rangeselector=dict(
+            buttons=[
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(count=6, label="6m", step="month", stepmode="backward"),
+                dict(count=1, label="1a", step="year", stepmode="backward"),
+                dict(step="all", label="todo"),
+            ],
+            font=dict(size=11), bgcolor="rgba(0,0,0,0)", activecolor=SLOTS[0],
+        ),
+        rangeslider=dict(visible=slider, thickness=0.06),
     )
     return fig
 

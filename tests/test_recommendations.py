@@ -21,7 +21,8 @@ def _base(tmp_path, dias_sin_actividad: int, acwr: float):
     for i in range(30):
         d = hoy - dt.timedelta(days=29 - i)
         con.execute(
-            "INSERT INTO daily_load VALUES (?, ?, 1, 20.0, 15.0, -5.0, ?, 'optima')",
+            "INSERT INTO daily_load (date_local, trimp, n_activities, atl, ctl, tsb, acwr, risk) "
+            "VALUES (?, ?, 1, 20.0, 15.0, -5.0, ?, 'optima')",
             [d, 20.0, acwr],
         )
     con.close()

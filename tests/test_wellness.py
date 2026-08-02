@@ -26,7 +26,8 @@ def _db(tmp_path, acwr=1.0, dias_sin=1):
     )
     for i in range(30):
         con.execute(
-            "INSERT INTO daily_load VALUES (?, 20.0, 1, 20.0, 18.0, -2.0, ?, 'optima')",
+            "INSERT INTO daily_load (date_local, trimp, n_activities, atl, ctl, tsb, acwr, risk) "
+            "VALUES (?, 20.0, 1, 20.0, 18.0, -2.0, ?, 'optima')",
             [hoy - dt.timedelta(days=29 - i), acwr],
         )
     con.close()
