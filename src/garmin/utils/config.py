@@ -1,4 +1,6 @@
 """Configuración del proyecto: rutas y parámetros del atleta."""
+from __future__ import annotations
+
 from pathlib import Path
 import yaml
 
