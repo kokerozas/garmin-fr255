@@ -226,3 +226,30 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
   `sleepEndTimestampGMT` desde el export — las columnas ya están migradas) · test submáximo estandarizado con
   HRex, que necesita que Jorge adopte un protocolo de 4 minutos · `sync.py` con la API de Garmin (fase 2 D-004).
 
+## D-021 — Formulario: cada métrica atada a su fórmula, su código y su cita
+- **Estado:** aceptada (2026-08-03, a pedido de Jorge)
+- **Problema que resuelve:** `docs/metodologia.md` explica la ciencia en prosa, pero no permite responder rápido
+  "¿qué está calculando exactamente este número?". Y un documento de fórmulas se pudre en silencio: alguien
+  ajusta una constante en el código y la ficha sigue mostrando el valor viejo, con apariencia de rigor.
+- **`src/garmin/formulas.py`:** registro de **22 fichas** en 5 categorías (carga · recuperación · carga externa
+  · registro subjetivo · calidad del dato). Cada una con: la pregunta que responde en criollo, la fórmula en
+  LaTeX **tal como el código la ejecuta**, el significado de cada símbolo, los valores concretos que usa este
+  proyecto, la ruta `archivo :: función()` donde vive, las referencias primarias completas y las limitaciones.
+- **Vista "Fórmulas"** en el dashboard, con buscador por métrica, autor o archivo (insensible a tildes).
+- **Enlace bidireccional:** el botón ℹ️ de cada panel ahora muestra, bajo la guía, la ecuación de las métricas
+  que ese panel usa. El mapeo guía↔fórmula se deriva del propio registro, así que no hay que mantenerlo a mano
+  en dos sitios.
+- **`tests/test_formulas.py` (24 tests) es la parte importante,** porque ata la ficha al código: verifica que
+  los coeficientes de Banister, los spans de ATL/CTL, las bandas del ACWR, la constante SWC, la necesidad de
+  sueño y sus mínimos por ventana, la puerta de validez del HRV, las ventanas del readiness y de Hooper, los
+  cortes de zonas, los umbrales de limpieza de FC y velocidad, los cortes del grado GPS y la puntuación OSTRC
+  **siguen siendo los que declara cada ficha**. Si alguien cambia una constante, el test falla y obliga a
+  actualizar la documentación a conciencia. Verifica además que el archivo y la función citados existan.
+- **Bug de renderizado encontrado y blindado:** al concatenar cadenas de LaTeX, `"\qquad"` seguido de `"P"`
+  produce `\qquadP`, un comando inexistente que KaTeX pinta como texto crudo. Pasaba en tres fichas. Se corrigió
+  y se añadió un test que valida **todos** los comandos LaTeX contra una lista blanca, más otro que comprueba
+  el balance de llaves. Se detectó levantando el navegador, no con tests unitarios — segunda vez en esta
+  iteración que la verificación visual caza algo invisible en el código.
+- **Verificación:** pytest **85/85 en verde** · 73 expresiones renderizadas con KaTeX y **cero errores** ·
+  buscador probado ("Hopkins" → 1 de 22 fichas) · fórmula visible dentro del popover ℹ️.
+

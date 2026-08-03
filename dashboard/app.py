@@ -23,7 +23,7 @@ import duckdb  # noqa: E402
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from garmin import guides, viz  # noqa: E402
+from garmin import formulas, guides, viz  # noqa: E402
 from garmin.metrics import readiness as rdy_mod  # noqa: E402
 from garmin.metrics import wellness  # noqa: E402
 from garmin.metrics.recommendations import build_recommendations  # noqa: E402
@@ -62,11 +62,43 @@ def estado_dominios(_mtime: float) -> dict:
     return rdy_mod.estado_global(DB)
 
 
+def ficha_formula(f: dict, compacta: bool = False) -> None:
+    """Renderiza una ficha del formulario: fórmula, parámetros, código y citas."""
+    if not compacta:
+        st.markdown(f"#### {f['nombre']}")
+        st.caption(f["pregunta"])
+    st.latex(f["latex"])
+    if f.get("variables"):
+        st.markdown("**Dónde:** " + " · ".join(
+            f"$`{sym}`$ {desc}" for sym, desc in f["variables"].items()))
+    if f.get("parametros"):
+        st.markdown("**Valores en este proyecto:** " + " · ".join(
+            f"$`{k}`$ = {v}" if k.startswith("\\") else f"{k}: **{v}**"
+            for k, v in f["parametros"].items()))
+    st.markdown(f"**Implementado en:** `{f['implementacion']}`")
+    with st.expander("📚 Referencias y limitaciones"):
+        for r in f["referencias"]:
+            st.markdown(f"- {r}")
+        st.warning(f"**Limitaciones:** {f['limitaciones']}")
+
+
+# Guía → fórmulas que le corresponden, para que el botón ℹ️ pueda mostrar la ecuación
+# sin que haya que mantener el enlace a mano en dos sitios.
+_FORMULAS_POR_GUIA: dict[str, list[dict]] = {}
+for _f in formulas.FORMULAS:
+    _FORMULAS_POR_GUIA.setdefault(_f.get("guia"), []).append(_f)
+
+
 def guia(key: str) -> None:
-    """Botón ℹ️ con la explicación técnica e intuitiva del panel (D-014)."""
-    if key in guides.GUIDES:
-        with st.popover("ℹ️ ¿Cómo leer este panel?"):
-            st.markdown(guides.GUIDES[key])
+    """Botón ℹ️ con la explicación del panel (D-014) y su fórmula exacta (D-021)."""
+    if key not in guides.GUIDES:
+        return
+    with st.popover("ℹ️ ¿Cómo leer este panel?"):
+        st.markdown(guides.GUIDES[key])
+        for f in _FORMULAS_POR_GUIA.get(key, []):
+            st.divider()
+            st.markdown(f"##### 🧮 {f['nombre']}")
+            ficha_formula(f, compacta=True)
 
 
 def panel(fig, key: str | None = None, **kw) -> None:
@@ -83,7 +115,8 @@ if not DB.exists():
 M = mtime()
 st.sidebar.title("Garmin FR255")
 page = st.sidebar.radio(
-    "Vista", ["Hoy", "Carga", "Recuperación", "Registrar", "Explorar", "Detalle de actividad"],
+    "Vista", ["Hoy", "Carga", "Recuperación", "Registrar", "Explorar",
+              "Detalle de actividad", "Fórmulas"],
 )
 OSCURO = st.sidebar.toggle(
     "Modo oscuro", value=False,
@@ -556,8 +589,38 @@ elif page == "Explorar":
         })
         panel(viz.fig_scatter3d_exploracion(tri, dark=OSCURO), "exploracion_3d")
 
+# =========================================================== Vista: Fórmulas
+elif page == "Fórmulas":
+    st.title("Formulario")
+    st.caption(
+        "Cada métrica del dashboard con la fórmula que el código ejecuta de verdad, "
+        "la ruta al archivo donde vive, sus referencias primarias y sus limitaciones. "
+        "Si alguna vez la ficha y el código se contradicen, eso es un bug (D-016)."
+    )
+
+    busca = st.text_input("Buscar métrica, autor o archivo",
+                          placeholder="ej. sueño, Foster, ACWR, clean.py…")
+    encontradas = formulas.buscar(busca)
+    if busca:
+        st.caption(f"{len(encontradas)} de {len(formulas.FORMULAS)} fichas coinciden.")
+
+    claves = {f["clave"] for f in encontradas}
+    for cat, titulo, subtitulo in formulas.CATEGORIAS:
+        fichas = [f for f in formulas.por_categoria(cat) if f["clave"] in claves]
+        if not fichas:
+            continue
+        st.header(titulo)
+        st.caption(subtitulo)
+        for f in fichas:
+            with st.container(border=True):
+                ficha_formula(f)
+        st.divider()
+
+    if not encontradas:
+        st.info("Ninguna ficha coincide con esa búsqueda.")
+
 # ================================================= Vista: Detalle de actividad
-else:
+elif page == "Detalle de actividad":
     st.title("Detalle de actividad")
 
     acts = q(
