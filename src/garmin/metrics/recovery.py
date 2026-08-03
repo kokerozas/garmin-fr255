@@ -365,18 +365,32 @@ def refresh_recovery(db_path) -> dict:
     if out.empty:
         return {"dias_serie": 0, "dias_con_banda": 0, "hrv_motivo": puerta["motivo"]}
 
-    ult = out.iloc[-1]
+    # El último día de la serie suele ser HOY, y hoy todavía no hay medición: el
+    # reloj sincroniza después. Cada campo se informa con su último valor conocido
+    # (y su fecha), o el resumen diría "nan" cada vez que se corre la ingesta antes
+    # de sincronizar el reloj.
+    def _ultimo(col):
+        s = out.dropna(subset=[col])
+        return (None, None) if s.empty else (s.iloc[-1][col], str(s.iloc[-1]["date_local"]))
+
     def _num(x, nd=1):
         return None if x is None or pd.isna(x) else round(float(x), nd)
 
+    estado, fecha_estado = _ultimo("rhr_state")
+    dias_fuera, _ = _ultimo("rhr_days_out")
+    deuda, fecha_deuda = _ultimo("sleep_debt_7d")
+    cobertura, _ = _ultimo("sleep_cov_7d")
+
     return {
         "dias_serie": int(len(out)),
-        "ultimo_dia": str(ult["date_local"]),
+        "ultimo_dia": str(out.iloc[-1]["date_local"]),
         "dias_con_banda": int(out["rhr_band_hi"].notna().sum()),
-        "rhr_estado": ult["rhr_state"],
-        "rhr_dias_fuera": None if pd.isna(ult["rhr_days_out"]) else int(ult["rhr_days_out"]),
-        "deuda_7d_h": _num(ult["sleep_debt_7d"]),
-        "cobertura_sueno_7d_pct": _num(ult["sleep_cov_7d"], 0),
+        "rhr_estado": None if estado is None else str(estado),
+        "rhr_estado_fecha": fecha_estado,
+        "rhr_dias_fuera": None if dias_fuera is None else int(dias_fuera),
+        "deuda_7d_h": _num(deuda),
+        "deuda_7d_fecha": fecha_deuda,
+        "cobertura_sueno_7d_pct": _num(cobertura, 0),
         "hrv_motivo": puerta["motivo"],
         "hrv_dias_faltantes": puerta.get("dias_faltantes"),
     }

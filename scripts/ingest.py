@@ -16,6 +16,8 @@ from garmin.db.loader import load_directory              # noqa: E402
 from garmin.db.monitoring_loader import load_monitoring  # noqa: E402
 from garmin.db.schema import connect                     # noqa: E402
 from garmin.metrics.load import refresh_all              # noqa: E402
+from garmin.metrics.readiness import refresh_readiness   # noqa: E402
+from garmin.metrics.recovery import refresh_recovery     # noqa: E402
 from garmin.metrics.zones import compute_zone_times      # noqa: E402
 from garmin.utils.config import db_path, load_settings   # noqa: E402
 
@@ -59,6 +61,20 @@ def main() -> None:
     print(
         f"Métricas      : {met['trimp_calculados']} TRIMP calculados, "
         f"{n_zonas} actividades con zonas nuevas, serie de {met['dias_serie']} días"
+    )
+
+    # Series derivadas (D-018). Van después de refresh_all porque leen daily_load.
+    rec = refresh_recovery(db)
+    rdy = refresh_readiness(db)
+    print(
+        f"Recuperación  : {rec['dias_con_banda']} días con banda personal · "
+        f"FC reposo {rec['rhr_estado']} ({rec['rhr_estado_fecha']}) · "
+        f"deuda de sueño 7d: {rec['deuda_7d_h']} h ({rec['deuda_7d_fecha']}) · "
+        f"HRV: {rec['hrv_motivo']}"
+    )
+    print(
+        f"Disposición   : {rdy['dias_serie']} días · índice hoy {rdy['indice']} "
+        f"({rdy['n_dominios']} dominios, {rdy['dominios_alerta']} en alerta)"
     )
     print(f"Estado hoy    : ACWR={met['acwr_hoy']}  riesgo={met['riesgo_hoy']}")
 
