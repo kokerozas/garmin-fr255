@@ -188,3 +188,41 @@ Fuente: kickoff con Jorge (2026-08-01), 20 preguntas estratégicas respondidas.
 - **Tema claro y oscuro:** los tokens de color dejan de estar fijos en modo claro; los valores validados CVD del
   modo claro se conservan intactos.
 
+## D-020 — Estado de la iteración: qué quedó construido y verificado
+- **Estado:** aceptada (2026-08-03)
+- **Backend nuevo:** `metrics/recovery.py` (banda SWC de FC en reposo, deuda de sueño, Ln rMSSD con puerta de
+  validez) · `metrics/readiness.py` (z-scores por dominio) · `metrics/load.py` ampliado (carga absoluta,
+  percentil personal, cambio semana a semana, monotonía/strain diarios, índice de eficiencia) ·
+  `metrics/wellness.py` ampliado (dRPE, Hooper, OSTRC-H2 condicional, adherencia, 4º factor en la tarjeta).
+- **Visualización:** `viz.py` pasa de 9 a 21 figuras y gana tema claro/oscuro. Nuevas: heatmap de calendario,
+  serie con banda personal, carga absoluta con percentil, dumbbell de molestias, scatter carga-recuperación,
+  sparkline, bullet, small multiples, decoupling, ruta 3D, perfil de altitud, scatter 3D de exploración,
+  coordenadas paralelas, y el helper de rangeselector.
+- **Dashboard:** reorganizado de 4 a 6 vistas siguiendo la jerarquía de Buchheit — **Hoy** (solo lo accionable),
+  **Carga**, **Recuperación**, **Registrar** (3 pestañas: post-sesión, matinal, semanal), **Explorar** (los 3D,
+  rotulados) y **Detalle**. El botón ℹ️ deja de quedar huérfano: cada gráfico se renderiza junto a su guía.
+- **Guías:** de 14 a 34. Reescritas `acwr` (explica su degradación), `fc_reposo` (banda personal) y `sueno`
+  (deuda acumulada con los números reales de Jorge).
+- **Carga externa y fatiga intra-partido:** `transform/clean.py` gana `flag_speed()` (espejo de la limpieza de
+  FC: marca `fuera_de_rango` sobre 9 m/s y `salto_imposible` sobre 6 m/s², comparando siempre contra la última
+  muestra confiable) · `metrics/external.py` con `gps_grade` como portero · `metrics/intrasession.py` con el
+  decoupling por mitades partidas por tiempo.
+- **Verificación:** `pytest` **61/61 en verde** (eran 19) · pipeline completo idempotente sobre datos reales:
+  809 días con banda personal de FC, 985 con índice de disposición, 521 ventanas con deuda de sueño calculable,
+  193 sesiones con carga externa y 75 partidos con decoupling (media **+4.1 %**, o sea que la segunda mitad
+  cuesta en promedio un 4 % más de pulso por metro) · **smoke test de las 6 vistas** contra la base real ·
+  **dashboard levantado en navegador** y recorrido vista por vista, incluida la ruta 3D de una actividad con
+  677 m de desnivel.
+- **La política del portero, comprobada con los datos:** de 193 sesiones con series, solo **41 tienen señal de
+  grado alto** (los perfiles de carrera, a 1 Hz); 86 de grado medio, 43 de grado bajo y 23 sin GPS. La distancia
+  a alta velocidad se calcula únicamente en esas 41. En la vista de Carga, cuando el rango elegido no contiene
+  ninguna sesión de grado alto, el dashboard lo dice explícitamente y explica cómo arreglarlo en el reloj.
+- **Dos bugs que solo aparecieron al renderizar** (y que ningún test unitario habría cachado): el cuarto factor
+  de la tarjeta devuelve el estado `sin_datos`, que no existía en el diccionario de emojis; y `bool(nan)` es
+  `True` en Python, así que la guarda `if hoy.wow_flag:` dejaba pasar los nulos que DuckDB entrega como NaN.
+  Ambos corregidos de forma defensiva. Moraleja registrada: para una app de Streamlit, levantar el navegador es
+  parte de la verificación, no un lujo.
+- **Pendiente para la próxima iteración:** Sleep Regularity Index (exige releer `sleepStartTimestampGMT` /
+  `sleepEndTimestampGMT` desde el export — las columnas ya están migradas) · test submáximo estandarizado con
+  HRex, que necesita que Jorge adopte un protocolo de 4 minutos · `sync.py` con la API de Garmin (fase 2 D-004).
+

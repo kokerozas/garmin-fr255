@@ -15,6 +15,8 @@ from garmin.db.export_loader import load_export          # noqa: E402
 from garmin.db.loader import load_directory              # noqa: E402
 from garmin.db.monitoring_loader import load_monitoring  # noqa: E402
 from garmin.db.schema import connect                     # noqa: E402
+from garmin.metrics.external import refresh_external     # noqa: E402
+from garmin.metrics.intrasession import refresh_intrasession  # noqa: E402
 from garmin.metrics.load import refresh_all              # noqa: E402
 from garmin.metrics.readiness import refresh_readiness   # noqa: E402
 from garmin.metrics.recovery import refresh_recovery     # noqa: E402
@@ -75,6 +77,19 @@ def main() -> None:
     print(
         f"Disposición   : {rdy['dias_serie']} días · índice hoy {rdy['indice']} "
         f"({rdy['n_dominios']} dominios, {rdy['dominios_alerta']} en alerta)"
+    )
+
+    ext = refresh_external(db)
+    intra = refresh_intrasession(db)
+    grados = " · ".join(f"{g}: {c}" for g, c in sorted(ext["por_grado"].items()))
+    print(
+        f"Carga externa : {ext['sesiones']} sesiones ({grados}) · "
+        f"{ext['con_alta_velocidad']} con alta velocidad (solo grado alta) · "
+        f"{ext['con_eficiencia']} con índice de eficiencia"
+    )
+    print(
+        f"Fatiga intra  : {intra['partidos']} partidos · "
+        f"decoupling medio {intra['decoupling_medio_pct']} %"
     )
     print(f"Estado hoy    : ACWR={met['acwr_hoy']}  riesgo={met['riesgo_hoy']}")
 
